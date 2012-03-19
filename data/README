@@ -2,6 +2,8 @@ This directory contains the following datasets:
 
 - lastfm_unique_tags.txt
 - lastfm_tags.db
+- lastfm_train/
+- lastfm_test/
 
 Available from:
 http://labrosa.ee.columbia.edu/millionsong/lastfm
