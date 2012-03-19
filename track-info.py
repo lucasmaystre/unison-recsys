@@ -10,7 +10,7 @@ DEFAULT_STR = '<unknown>'
 def pretty_print(info):
     print "Artist: %s" % info.get('artist', DEFAULT_STR)
     print "Title:  %s" % info.get('title', DEFAULT_STR)
-    if 'tags' in info:
+    if len(info.get('tags', [])) > 0:
         print "\n", "Tags:"
         for tag in info['tags']:
             print "- %s (%s)" % tuple(tag)
