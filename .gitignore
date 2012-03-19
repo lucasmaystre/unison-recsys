@@ -1,2 +1,6 @@
+# Datasets. Just keep the README.
 /data/*
 !/data/README
+
+# Python virtual environment.
+/venv
