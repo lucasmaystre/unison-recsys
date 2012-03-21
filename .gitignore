@@ -2,8 +2,10 @@
 /data/*
 !/data/README
 
-# Python virtual environment.
+# Python virtual environment, and generated files.
 /venv
+/gen
 
 # Other stuff.
 *.pyc
+*.swp
