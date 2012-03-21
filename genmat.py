@@ -15,18 +15,13 @@ SVDLIBC docs:
     are in network byte order.
 """
 
+import argparse
+import codecs
 import marshal
-import optparse
 import os
 import sqlite3
 import struct
 
-
-# Files.
-TAGS_DATABASE = 'data/lastfm_tags.db'
-TAGS_FREQUENCY = 'data/lastfm_unique_tags.txt'
-TAGS_DICT_SERIALIZED = './tags_dict.dat'
-MATRIX_FILE = './tag_track.mat'
 
 # SQL queries.
 QUERY_ALL_TRACKS = "SELECT tid FROM tids"
@@ -40,13 +35,13 @@ STRUCT_COL_HEADER = struct.Struct("!l")
 STRUCT_COL_ENTRY = struct.Struct("!lf")
 
 
-def generate_matrix(tags_dict, max_nb=-1):
+def generate_matrix(tags_dict, db, path, max_nb=-1):
     """Write out a tag-track matrix in the sparse binary matrix format.
 
     Fetches the tracks and tags from the SQLite database. Restricts the tags to
     those in 'tags_dict', and optionally stops after 'max_nb' tracks.
     """
-    mat_file = open(MATRIX_FILE, 'wb')
+    mat_file = open(path, 'wb')
     update_header(mat_file)
     # Initialize the matrix header values.
     nb_rows = len(tags_dict)  # Number of tags.
@@ -54,7 +49,7 @@ def generate_matrix(tags_dict, max_nb=-1):
     nb_non_zero = 0  # Total number of nonzero values.
 
     # Set up the connection to the database, and create two cursors.
-    conn = sqlite3.connect(TAGS_DATABASE)
+    conn = sqlite3.connect(db)
     tracks_cursor = conn.cursor()
     tags_cursor = conn.cursor()
     # Iterate over all tracks.
@@ -101,7 +96,7 @@ def append_column(mat_file, column):
         mat_file.write(STRUCT_COL_ENTRY.pack(*entry))
 
 
-def generate_tags_dict(max_nb=-1, min_count=0):
+def generate_tags_dict(tags_file, max_nb=-1, min_count=0):
     """Generate a dict: tag_name -> row_index.
 
     If max_nb is positive, we only include the max_nb most popular tags. If
@@ -110,7 +105,8 @@ def generate_tags_dict(max_nb=-1, min_count=0):
     """
     tags = dict()
     index = 0  # Tag index (i.e. row index).
-    for line in open(TAGS_FREQUENCY):
+    f = codecs.open(tags_file, encoding='utf-8')
+    for line in f:
         # We assume TAGS_LIST is already sorted by decreasing popularity.
         tag, count = line.split("\t")
         if int(count) < min_count or (max_nb > 0 and index >= max_nb):
@@ -120,9 +116,9 @@ def generate_tags_dict(max_nb=-1, min_count=0):
     return tags
 
 
-def dump_tags_dict(tags_dict):
+def dump_tags_dict(tags_dict, path):
     """Write a marshalled tags dict to disk."""
-    f = open(TAGS_DICT_SERIALIZED, 'wb')
+    f = open("%s.dict" % path, 'wb')
     marshal.dump(tags_dict, f)
 
 
@@ -133,20 +129,26 @@ def load_tags_dict():
 
 
 def _parse_command():
-    parser = optparse.OptionParser()
-    parser.add_option('--max-tracks', action='store', type='int',
-            dest='max_tracks', default=-1)
-    parser.add_option('--max-tags', action='store', type='int',
-            dest='max_tags', default=-1)
-    parser.add_option('--min-tag-count', action='store', type='int',
-            dest='min_tag_count', default=0)
+    parser = argparse.ArgumentParser(description="""Generate a
+            tag-track matrix from the MSD tags database.""")
+    # Options.
+    parser.add_argument('--max-tracks', '-m', type=int, default=-1)
+    parser.add_argument('--max-tags', '-M', type=int, default=-1)
+    parser.add_argument('--min-tag-count', '-c', type=int, default=0)
+    # Required arguments.
+    parser.add_argument('--db', '-d', required=True, metavar='TAGS_DB')
+    parser.add_argument('--tags-list', '-t', required=True)
+    parser.add_argument('path')
     return parser.parse_args()
 
 
 if __name__ == '__main__':
-    # TODO make a nicer command line utility (where to save the .mat file? do we
-    # want to save / load a marshalled tags_dict?)
-    options, args = _parse_command()
-    tags = generate_tags_dict(
-            max_nb=options.max_tags, min_count=options.min_tag_count)
-    generate_matrix(tags, max_nb=options.max_tracks)
+    args = _parse_command()
+    print "Generating the [tag_name -> column] mapping.."
+    tags = generate_tags_dict(args.tags_list, max_nb=args.max_tags,
+            min_count=args.min_tag_count)
+    print "Generating the matrix..."
+    generate_matrix(tags, args.db, args.path, max_nb=args.max_tracks)
+    print "Writing the [tag_name -> column] mapping..."
+    dump_tags_dict(tags, args.path)
+    print "Done."
