@@ -168,8 +168,10 @@ def generate_tags_dict(tags_file, max_nb=-1, min_count=0):
         tag, count = line.split("\t")
         if int(count) < min_count or (max_nb > 0 and index >= max_nb):
             break
-        tags[tag] = index
-        index += 1
+        tag = tag.lower()
+        if tag not in tags:
+            tags[tag] = index
+            index += 1
     return tags
 
 
