@@ -2,6 +2,7 @@
 """Read tag feature vectors from the database."""
 
 import argparse
+import math
 import sqlite3
 import struct
 import sys
@@ -25,6 +26,7 @@ def get_features(db, tag):
 
 def pretty_print(vector):
     print tuple([('%.2f' % x) for x in vector])
+    print "L2 norm: ", math.sqrt(sum([x*x for x in vector]))
 
 
 def _parse_args():
@@ -36,8 +38,8 @@ def _parse_args():
 
 if __name__ == '__main__':
     args = _parse_args()
-    # Convert tag name to UTF-8.
-    tag = unicode(args.tag, encoding='utf-8')
+    # Convert tag name to UTF-8 and discard case.
+    tag = unicode(args.tag, encoding='utf-8').lower()
     vector = get_features(args.db, tag)
     if vector is None:
         print "Tag not found."
