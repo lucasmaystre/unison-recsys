@@ -13,6 +13,12 @@ SVDLIBC docs:
     
     All values are 4-byte integers except value, which is a 4-byte float. All
     are in network byte order.
+
+The entries in the tag-track matrix are weighted according to the Log-Entropy
+weighting scheme. See for example:
+
+    Dumais, S., "Improving the retrieval of information from external sources",
+    in Behavior Research Methods, 1991
 """
 
 import argparse
@@ -22,10 +28,12 @@ import os
 import sqlite3
 import struct
 
+from math import log, log1p
+
 
 # SQL queries.
 QUERY_ALL_TRACKS = "SELECT tid FROM tids"
-QUERY_TAGS_FOR_TRACK = ("SELECT tags.tag FROM tags, tid_tag, tids "
+QUERY_TAGS_FOR_TRACK = ("SELECT tags.tag, tid_tag.val FROM tags, tid_tag, tids "
         + "WHERE tags.ROWID = tid_tag.tag "
         + "AND tid_tag.tid = tids.ROWID "
         + "AND tids.tid = ?")
@@ -33,6 +41,9 @@ QUERY_TAGS_FOR_TRACK = ("SELECT tags.tag FROM tags, tid_tag, tids "
 # Compiled Struct objects to avoid reparsing the format everytime.
 STRUCT_COL_HEADER = struct.Struct("!l")
 STRUCT_COL_ENTRY = struct.Struct("!lf")
+
+TMP_FILE = '/tmp/genmat.mat'
+LOG2 = log(2)
 
 
 def generate_matrix(tags_dict, db, path, max_nb=-1):
@@ -42,11 +53,15 @@ def generate_matrix(tags_dict, db, path, max_nb=-1):
     those in 'tags_dict', and optionally stops after 'max_nb' tracks.
     """
     mat_file = open(path, 'wb')
-    update_header(mat_file)
+    tmp_file = open(TMP_FILE, 'w+b')
+    update_header(tmp_file)
     # Initialize the matrix header values.
     nb_rows = len(tags_dict)  # Number of tags.
     nb_cols = 0  # Will be equal to the number of tracks.
     nb_non_zero = 0  # Total number of nonzero values.
+    # Initialize the two running sums needed for the global weighting.
+    tf = [0] * len(tags_dict)
+    tflogtf = [0] * len(tags_dict)
 
     # Set up the connection to the database, and create two cursors.
     conn = sqlite3.connect(db)
@@ -59,8 +74,13 @@ def generate_matrix(tags_dict, db, path, max_nb=-1):
         # Iterate over the associated tags.
         tags_cursor.execute(QUERY_TAGS_FOR_TRACK, (track[0],))
         for tag in tags_cursor:
-            if tag[0] in tags_dict:
-                entry = (tags_dict[tag[0]], 1)
+            name = tag[0]
+            freq = tag[1]
+            if name in tags_dict and freq > 0:
+                # Local weight is log2(1 + tf)
+                entry = (tags_dict[name], log1p(freq) / LOG2)
+                tf[tags_dict[name]] += freq
+                tflogtf[tags_dict[name]] += freq * (log(freq) / LOG2)
                 column.append(entry)
         if len(column) == 0:
             # The track results in an all-zero column. Skip it.
@@ -68,32 +88,69 @@ def generate_matrix(tags_dict, db, path, max_nb=-1):
         # Update track count and non-zero value count.
         nb_cols += 1
         nb_non_zero += len(column)
-        append_column(mat_file, column)
+        append_column(tmp_file, column)
         if max_nb > 0 and nb_cols >= max_nb:
             break  # We're done, we have enough tracks.
-    # We're done! We just need to update the header with the correct values.
-    update_header(mat_file, rows=nb_rows, cols=nb_cols, total=nb_non_zero)
+    # We need to update the header with the correct values.
+    update_header(tmp_file, rows=nb_rows, cols=nb_cols, total=nb_non_zero)
+    # Apply the global weights to the matrix entries.
+    apply_weights(tmp_file, mat_file, nb_cols, tf, tflogtf)
+    # We're done! Yay!
+    tmp_file.close()
+    os.remove(TMP_FILE)
     mat_file.close()
 
 
-def update_header(mat_file, rows=0, cols=0, total=0):
+def update_header(mfile, rows=0, cols=0, total=0):
     """Update the header for a matrix in sparse binary format.
 
-    The file 'mat_file' has to be opened with the flags r+b or wb to allow
-    writing anywhere in the file.
+    The file 'mfile' has to be opened with the flags r+b or wb to allow writing
+    anywhere in the file.
     """
     # Exclamation point (!) means network byte order (big endian).
     data = struct.pack('!lll', rows, cols, total)
-    mat_file.seek(0)
-    mat_file.write(data)
+    mfile.seek(0)
+    mfile.write(data)
 
 
-def append_column(mat_file, column):
+def append_column(mfile, column):
     """Append a new column to a sparse binary matrix."""
-    mat_file.seek(0, os.SEEK_END)  # Append to the file.
-    mat_file.write(STRUCT_COL_HEADER.pack(len(column)))
+    mfile.seek(0, os.SEEK_END)  # Append to the file.
+    mfile.write(STRUCT_COL_HEADER.pack(len(column)))
     for entry in column:
-        mat_file.write(STRUCT_COL_ENTRY.pack(*entry))
+        mfile.write(STRUCT_COL_ENTRY.pack(*entry))
+
+
+def apply_weights(tmp_file, mat_file, nb_cols, tf, tflogtf):
+    """Rewrite the matrix by applying the global weights.
+
+    Global weights cannot be computed prior to writing the matrix. For this
+    reason once the matrix is complete it has to be rewritten.
+    """
+    gw = [0] * len(tf)  # Global weight for each tag.
+    c = 1 / (log(nb_cols) / LOG2)
+    # Compute the global weights.
+    for i in xrange(len(tf)):
+        if tf[i] > 0:
+            # Entropy-based, i.e. gw[i] = 1 - H(Track | Tag = i) / H(Track)
+            gw[i] = 1 - (c / tf[i]) * ((tf[i] * log(tf[i]) / LOG2) - tflogtf[i])
+    tmp_file.seek(0)
+    mat_file.seek(0)
+    # Copy (rewrite) the matrix with the global weights.
+    header = tmp_file.read(3 * 4)
+    mat_file.write(header)
+    rows, cols, total = struct.unpack('!lll', header)
+    for i in xrange(cols):
+        # Iterate over tracks (columns)
+        col_header = tmp_file.read(4)
+        mat_file.write(col_header)
+        nb_val, = STRUCT_COL_HEADER.unpack(col_header)
+        for j in xrange(nb_val):
+            # Iterate over non zero entries of the track.
+            index, val = STRUCT_COL_ENTRY.unpack(tmp_file.read(2 * 4))
+            weighted = val * gw[index]
+            entry = STRUCT_COL_ENTRY.pack(index, weighted)
+            mat_file.write(entry)
 
 
 def generate_tags_dict(tags_file, max_nb=-1, min_count=0):
