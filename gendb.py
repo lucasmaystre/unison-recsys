@@ -60,6 +60,7 @@ def populate_db(tags_dict, vectors, db_file):
     for tag, index in tags_dict.iteritems():
         values = (tag, buffer(vectors[index]))
         cursor.execute(INSERT_ROW, values)
+    conn.commit()
 
 
 def init_db(db_file):
@@ -68,8 +69,6 @@ def init_db(db_file):
     # Trick to truncate the file.
     open(db_file, "w").close()
     conn = sqlite3.connect(db_file);
-    # Auto-commit INSERTs.
-    conn.isolation_level = None
     # Create the table and index.
     conn.executescript(TABLE_SCHEMA)
     return conn
