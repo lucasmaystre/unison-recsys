@@ -16,7 +16,7 @@ import marshal
 import sqlite3
 import struct
 
-from util import DB_PATH, TAGS_PATH, UT_PATH, load_tags
+from util import DB_PATH, TAGS_PATH, UT_PATH, load_tags, create_tree
 
 
 TABLE_SCHEMA = """
@@ -64,6 +64,7 @@ def populate_db(tags_dict, vectors, db_file):
 
 def init_db(db_file):
     """Small helper to (re)initalize the database."""
+    create_tree(db_file)
     # Trick to truncate the file.
     open(db_file, "w").close()
     conn = sqlite3.connect(db_file);

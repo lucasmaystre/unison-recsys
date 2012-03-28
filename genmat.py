@@ -29,7 +29,8 @@ import sqlite3
 import struct
 
 from math import log, log1p
-from util import MATRIX_PATH, TAGS_PATH, WEIGHTS_PATH, dump_tags, dump_weights
+from util import (MATRIX_PATH, TAGS_PATH, WEIGHTS_PATH,
+        dump_tags, dump_weights, create_tree)
 
 
 # SQL queries.
@@ -208,6 +209,7 @@ if __name__ == '__main__':
     tags = generate_tags_dict(args.tags, max_nb=args.max_tags,
             min_count=args.min_tag_count)
     print "Generating the matrix..."
+    create_tree(args.out)
     weights = generate_matrix(tags, args.database, args.out,
             max_nb=args.max_tracks)
     print "Writing the [tag_name -> column] mapping..."

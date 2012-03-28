@@ -26,15 +26,24 @@ def _load(path):
 
 def _dump(data, path):
     """Write a marshalled structure to disk."""
-    path = os.path.abspath(path)
-    folder = os.path.dirname(path)
-    try:
-        os.makedirs(folder)
-    except OSError:
-        # Either the dirs already exist, or we'll fail below.
-        pass
+    create_tree(path)
     f = open(path, 'wb')
     marshal.dump(data, f)
+
+
+def create_tree(path):
+    """Recursively create a directory structure.
+
+    Useful when attempting to write to a file that is in a folder hierarchy that
+    does not necessarily exist yet.
+
+    Beware, there's a small race condition between the execution of
+    os.path.exists() and os.makedirs().
+    """
+    path = os.path.abspath(path)
+    folder = os.path.dirname(path)
+    if not os.path.exists(folder):
+        os.makedirs(folder)
 
 
 def dump_tags(tags_dict, path=TAGS_PATH):
