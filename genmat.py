@@ -29,6 +29,7 @@ import sqlite3
 import struct
 
 from math import log, log1p
+from util import MATRIX_PATH, TAGS_PATH, WEIGHTS_PATH, dump_tags, dump_weights
 
 
 # SQL queries.
@@ -51,6 +52,8 @@ def generate_matrix(tags_dict, db, path, max_nb=-1):
 
     Fetches the tracks and tags from the SQLite database. Restricts the tags to
     those in 'tags_dict', and optionally stops after 'max_nb' tracks.
+
+    Returns the list of global weights used to generate the matrix.
     """
     mat_file = open(path, 'wb')
     tmp_file = open(TMP_FILE, 'w+b')
@@ -60,8 +63,8 @@ def generate_matrix(tags_dict, db, path, max_nb=-1):
     nb_cols = 0  # Will be equal to the number of tracks.
     nb_non_zero = 0  # Total number of nonzero values.
     # Initialize the two running sums needed for the global weighting.
-    tf = [0] * len(tags_dict)
-    tflogtf = [0] * len(tags_dict)
+    tf_sum = [0] * len(tags_dict)
+    log_sum = [0] * len(tags_dict)
 
     # Set up the connection to the database, and create two cursors.
     conn = sqlite3.connect(db)
@@ -79,8 +82,8 @@ def generate_matrix(tags_dict, db, path, max_nb=-1):
             if name in tags_dict and freq > 0:
                 # Local weight is log2(1 + tf)
                 entry = (tags_dict[name], log1p(freq) / LOG2)
-                tf[tags_dict[name]] += freq
-                tflogtf[tags_dict[name]] += freq * (log(freq) / LOG2)
+                tf_sum[tags_dict[name]] += freq
+                log_sum[tags_dict[name]] += freq * (log(freq) / LOG2)
                 column.append(entry)
         if len(column) == 0:
             # The track results in an all-zero column. Skip it.
@@ -94,11 +97,13 @@ def generate_matrix(tags_dict, db, path, max_nb=-1):
     # We need to update the header with the correct values.
     update_header(tmp_file, rows=nb_rows, cols=nb_cols, total=nb_non_zero)
     # Apply the global weights to the matrix entries.
-    apply_weights(tmp_file, mat_file, nb_cols, tf, tflogtf)
+    weights = compute_weights(nb_cols, tf_sum, log_sum)
+    apply_weights(tmp_file, mat_file, weights)
     # We're done! Yay!
     tmp_file.close()
     os.remove(TMP_FILE)
     mat_file.close()
+    return weights
 
 
 def update_header(mfile, rows=0, cols=0, total=0):
@@ -121,19 +126,25 @@ def append_column(mfile, column):
         mfile.write(STRUCT_COL_ENTRY.pack(*entry))
 
 
-def apply_weights(tmp_file, mat_file, nb_cols, tf, tflogtf):
+def compute_weights(nb_tracks, gf, log_sum):
+    """Compute the global weights (entropy strategy)."""
+    weights = [0] * len(gf)
+    # Normalization factor.
+    c = 1 / (log(nb_tracks) / LOG2)
+    for i in xrange(len(gf)):
+        if gf[i] > 0:
+            # Entropy-based, i.e. w[i] = 1 - H(Track | Tag = i) / H(Track)
+            entropy = (gf[i] * log(gf[i]) / LOG2) - log_sum[i]
+            weights[i] = 1 - (c / gf[i]) * entropy
+    return weights
+
+
+def apply_weights(tmp_file, mat_file, weights):
     """Rewrite the matrix by applying the global weights.
 
     Global weights cannot be computed prior to writing the matrix. For this
     reason once the matrix is complete it has to be rewritten.
     """
-    gw = [0] * len(tf)  # Global weight for each tag.
-    c = 1 / (log(nb_cols) / LOG2)
-    # Compute the global weights.
-    for i in xrange(len(tf)):
-        if tf[i] > 0:
-            # Entropy-based, i.e. gw[i] = 1 - H(Track | Tag = i) / H(Track)
-            gw[i] = 1 - (c / tf[i]) * ((tf[i] * log(tf[i]) / LOG2) - tflogtf[i])
     tmp_file.seek(0)
     mat_file.seek(0)
     # Copy (rewrite) the matrix with the global weights.
@@ -148,7 +159,7 @@ def apply_weights(tmp_file, mat_file, nb_cols, tf, tflogtf):
         for j in xrange(nb_val):
             # Iterate over non zero entries of the track.
             index, val = STRUCT_COL_ENTRY.unpack(tmp_file.read(2 * 4))
-            weighted = val * gw[index]
+            weighted = val * weights[index]
             entry = STRUCT_COL_ENTRY.pack(index, weighted)
             mat_file.write(entry)
 
@@ -175,18 +186,6 @@ def generate_tags_dict(tags_file, max_nb=-1, min_count=0):
     return tags
 
 
-def dump_tags_dict(tags_dict, path):
-    """Write a marshalled tags dict to disk."""
-    f = open("%s.dict" % path, 'wb')
-    marshal.dump(tags_dict, f)
-
-
-def load_tags_dict():
-    """Read a marshalled tags dict from disk."""
-    f = open(TAGS_DICT_SERIALIZED, 'rb')
-    return marshal.load(f)
-
-
 def _parse_command():
     parser = argparse.ArgumentParser(description="""Generate a
             tag-track matrix from the MSD tags database.""")
@@ -194,20 +193,25 @@ def _parse_command():
     parser.add_argument('--max-tracks', '-m', type=int, default=-1)
     parser.add_argument('--max-tags', '-M', type=int, default=-1)
     parser.add_argument('--min-tag-count', '-c', type=int, default=0)
+    parser.add_argument('--out', '-o', default=MATRIX_PATH)
+    parser.add_argument('--tags-out', default=TAGS_PATH)
+    parser.add_argument('--weights-out', default=WEIGHTS_PATH)
     # Required arguments.
-    parser.add_argument('--db', '-d', required=True, metavar='TAGS_DB')
-    parser.add_argument('--tags-list', '-t', required=True)
-    parser.add_argument('path')
+    parser.add_argument('database')
+    parser.add_argument('tags')
     return parser.parse_args()
 
 
 if __name__ == '__main__':
     args = _parse_command()
     print "Generating the [tag_name -> column] mapping.."
-    tags = generate_tags_dict(args.tags_list, max_nb=args.max_tags,
+    tags = generate_tags_dict(args.tags, max_nb=args.max_tags,
             min_count=args.min_tag_count)
     print "Generating the matrix..."
-    generate_matrix(tags, args.db, args.path, max_nb=args.max_tracks)
+    weights = generate_matrix(tags, args.database, args.out,
+            max_nb=args.max_tracks)
     print "Writing the [tag_name -> column] mapping..."
-    dump_tags_dict(tags, args.path)
+    dump_tags(tags, args.tags_out)
+    print "Writing the [column -> global_weight] mapping..."
+    dump_weights(weights, args.weights_out)
     print "Done."

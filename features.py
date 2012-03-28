@@ -7,32 +7,13 @@ import sqlite3
 import struct
 import sys
 
-
-QUERY_SELECT = "SELECT vector FROM tags WHERE name = ?"
-
-
-def get_features(db, tag):
-    conn = sqlite3.connect(db)
-    res = conn.execute(QUERY_SELECT, (tag,)).fetchone()
-    if res is None:
-        return None
-    raw = res[0]
-    vector = list()
-    for i in xrange(0, len(raw), 4):
-        val, = struct.unpack('!f', raw[i:i+4])
-        vector.append(val)
-    return vector
-
-
-def pretty_print(vector):
-    print tuple([('%.2f' % x) for x in vector])
-    print "L2 norm: ", math.sqrt(sum([x*x for x in vector]))
+from util import DB_PATH, get_vector, print_vector
 
 
 def _parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('tag')
-    parser.add_argument('--db', required=True)
+    parser.add_argument('--db', default=DB_PATH)
     return parser.parse_args()
 
 
@@ -40,8 +21,9 @@ if __name__ == '__main__':
     args = _parse_args()
     # Convert tag name to UTF-8 and discard case.
     tag = unicode(args.tag, encoding='utf-8').lower()
-    vector = get_features(args.db, tag)
+    conn = sqlite3.connect(args.db)
+    vector = get_vector(conn, tag)
     if vector is None:
         print "Tag not found."
         sys.exit(0)
-    pretty_print(vector)
+    print_vector(vector)

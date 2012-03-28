@@ -16,6 +16,8 @@ import marshal
 import sqlite3
 import struct
 
+from util import DB_PATH, TAGS_PATH, UT_PATH, load_tags
+
 
 TABLE_SCHEMA = """
     CREATE TABLE tags (
@@ -72,27 +74,21 @@ def init_db(db_file):
     return conn
 
 
-def load_tags_dict(dict_file):
-    """Read a marshalled tags dict from disk."""
-    f = open(dict_file, 'rb')
-    return marshal.load(f)
-
-
 def _parse_args():
     parser = argparse.ArgumentParser(
             description="Generate a tag features database.")
-    parser.add_argument('-t', '--tags', required=True)
-    parser.add_argument('-m', '--matrix', required=True)
-    parser.add_argument('database')
+    parser.add_argument('--tags', '-t', default=TAGS_PATH)
+    parser.add_argument('--matrix', '-m', default=UT_PATH)
+    parser.add_argument('--out', '-o', default=DB_PATH)
     return parser.parse_args()
 
 
 if __name__ == '__main__':
     args = _parse_args()
     print "Unmarshalling the tags dictionnary..."
-    tags_dict = load_tags_dict(args.tags)
+    tags_dict = load_tags(args.tags)
     print "Read the feature vectors from the matrix..."
     vectors = read_vectors(args.matrix)
     print "Generate the database..."
-    populate_db(tags_dict, vectors, args.database)
+    populate_db(tags_dict, vectors, args.out)
     print "Done."
