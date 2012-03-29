@@ -22,8 +22,8 @@ if __name__ == '__main__':
     # Convert tag name to UTF-8 and discard case.
     tag = unicode(args.tag, encoding='utf-8').lower()
     conn = sqlite3.connect(args.db)
-    vector = get_vector(conn, tag)
+    vector, weight = get_vector(conn, tag)
     if vector is None:
         print "Tag not found."
         sys.exit(0)
-    print_vector(vector)
+    print_vector(vector, weight)

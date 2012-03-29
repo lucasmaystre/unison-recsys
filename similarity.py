@@ -12,27 +12,26 @@ import struct
 
 from math import log, log1p, sqrt
 from util import (DB_PATH, TAGS_PATH, WEIGHTS_PATH,
-        get_vector, print_vector, print_track, load_tags, load_weights)
+        get_dimensions, get_vector, print_vector, print_track)
 
 
-def similarity(t1, t2, db, weight_fct):
+def similarity(t1, t2, db):
     conn = sqlite3.connect(db)
-    v1 = compute_vector(t1, weight_fct, conn)
-    v2 = compute_vector(t2, weight_fct, conn)
+    v1 = compute_vector(t1, conn)
+    v2 = compute_vector(t2, conn)
     # Cosine similarity (= dot product, vectors are normalized).
     return sum([v1[i] * v2[i] for i in range(len(v1))])
 
 
-def compute_vector(track, weight_fct, db_conn):
-    dim = len(get_vector(db_conn, 'rock'))  # TODO temp.
-    vector = [0] * dim
+def compute_vector(track, db_conn):
+    vector = [0] * get_dimensions(db_conn)
     for tag, count in track['tags']:
-        curr = get_vector(db_conn, tag)
+        curr, gw = get_vector(db_conn, tag)
         if curr is None:
             # TODO Not very elegant.
             print "Tag %s not in database." % tag
             continue
-        weight = weight_fct(tag) * log1p(float(count)) / log(2)
+        weight = gw * log1p(float(count)) / log(2)
         vector = [(weight*x + y) for x, y in zip(curr, vector)]
     norm = sqrt(sum([x*x for x in vector]))
     if norm > 0:
@@ -46,8 +45,6 @@ def _parse_args():
     parser.add_argument('track1', type=open)
     parser.add_argument('track2', type=open)
     parser.add_argument('--db', default=DB_PATH)
-    parser.add_argument('--weights', default=WEIGHTS_PATH)
-    parser.add_argument('--tags', default=TAGS_PATH)
     return parser.parse_args()
 
 
@@ -59,7 +56,4 @@ if __name__ == '__main__':
     print_track(t1)
     print('-------- Track 2')
     print_track(t2)
-    weights = load_weights(args.weights)
-    tags = load_tags(args.tags)
-    weight_fct = lambda tag: weights[tags[tag]]
-    print similarity(t1, t2, args.db, weight_fct)
+    print similarity(t1, t2, args.db)

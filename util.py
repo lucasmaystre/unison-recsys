@@ -15,7 +15,7 @@ UT_PATH = '%s/result-Ut' % GEN_ROOT
 DB_PATH = '%s/tags.db' % GEN_ROOT
 WEIGHTS_PATH = '%s/weights.marshal' % GEN_ROOT
 
-QUERY_SELECT = "SELECT vector FROM tags WHERE name = ?"
+QUERY_SELECT = "SELECT vector, weight FROM tags WHERE name = ?"
 
 
 def _load(path):
@@ -73,23 +73,30 @@ def get_vector(conn, tag):
     """
     res = conn.execute(QUERY_SELECT, (tag,)).fetchone()
     if res is None:
-        return None
-    raw = res[0]
+        return None, None
+    raw, weight = res
     vector = list()
     for i in xrange(0, len(raw), 4):
         val, = struct.unpack('!f', raw[i:i+4])
         vector.append(val)
     norm = math.sqrt(sum([x*x for x in vector]))
     if norm > 0:
-        return tuple([x / norm for x in vector])
+        return tuple([x / norm for x in vector]), weight
     else:
-        return tuple(vector)
+        return tuple(vector), weight
 
 
-def print_vector(vector):
+def get_dimensions(conn):
+    res = conn.execute("SELECT vector FROM tags LIMIT 1").fetchone()
+    return len(res[0]) / 4
+
+
+def print_vector(vector, weight=None):
     """Pretty print a feature vector."""
     print tuple([('%.2f' % x) for x in vector])
-    print "l2-norm: ", math.sqrt(sum([x*x for x in vector]))
+    print "l2-norm: %.2f" % math.sqrt(sum([x*x for x in vector]))
+    if weight is not None:
+        print "weight: %.2f" % weight
 
 
 def print_track(track):
