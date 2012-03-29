@@ -15,10 +15,9 @@ from util import (DB_PATH, TAGS_PATH, WEIGHTS_PATH,
         get_dimensions, get_vector, print_vector, print_track)
 
 
-def similarity(t1, t2, db):
-    conn = sqlite3.connect(db)
-    v1 = compute_vector(t1, conn)
-    v2 = compute_vector(t2, conn)
+def similarity(t1, t2, db_conn):
+    v1 = compute_vector(t1, db_conn)
+    v2 = compute_vector(t2, db_conn)
     # Cosine similarity (= dot product, vectors are normalized).
     return sum([v1[i] * v2[i] for i in range(len(v1))])
 
@@ -28,8 +27,6 @@ def compute_vector(track, db_conn):
     for tag, count in track['tags']:
         curr, gw = get_vector(db_conn, tag)
         if curr is None:
-            # TODO Not very elegant.
-            print "Tag %s not in database." % tag
             continue
         weight = gw * log1p(float(count)) / log(2)
         vector = [(weight*x + y) for x, y in zip(curr, vector)]
@@ -56,4 +53,5 @@ if __name__ == '__main__':
     print_track(t1)
     print('-------- Track 2')
     print_track(t2)
-    print similarity(t1, t2, args.db)
+    db_conn = sqlite3.connect(args.db)
+    print similarity(t1, t2, db_conn)
