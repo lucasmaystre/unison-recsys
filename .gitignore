@@ -3,8 +3,8 @@
 !/data/README
 
 # Python virtual environment, and generated files.
-/venv
-/gen
+/venv/
+gen/
 
 # Other stuff.
 *.pyc
