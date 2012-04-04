@@ -16,7 +16,7 @@ import marshal
 import sqlite3
 import struct
 
-from util import (DB_PATH, TAGS_PATH, WEIGHTS_PATH, UT_PATH,
+from uutils import (DB_PATH, TAGS_PATH, WEIGHTS_PATH, UT_PATH,
         load_tags, load_weights, create_tree)
 
 

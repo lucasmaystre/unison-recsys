@@ -2,7 +2,7 @@ default: demo
 
 matrix:
 	echo "Generate the tag-track matrix..."
-	time ./genmat.py -c 10 data/lastfm_tags.db data/lastfm_unique_tags.txt
+	time ./genmat.py -c 10 ../data/lastfm_tags.db ../data/lastfm_unique_tags.txt
 
 svd: matrix
 	echo "Perform the d-dimensional SVD approximation..."
@@ -13,7 +13,7 @@ lspace: matrix svd
 	time ./gendb.py
 
 demo:
-	./genmat.py -m 1000 -M 1000 data/lastfm_tags.db data/lastfm_unique_tags.txt
+	./genmat.py -m 1000 -M 1000 ../data/lastfm_tags.db ../data/lastfm_unique_tags.txt
 	svd -r sb -w db -o gen/result -d 15 gen/tag-track.mat
 	./gendb.py
 

@@ -7,10 +7,10 @@ import os.path
 import urllib
 import urllib2
 
-from util import GEN_ROOT
+from uutils import GEN_ROOT
 
 
-DEFAULT_KEY_FILE = 'lastfm.key'
+DEFAULT_KEY_FILE = os.path.expanduser('~/lastfm.key')
 DEFAULT_FOLDER = '%s/metadata' % GEN_ROOT
 API_ROOT = 'http://ws.audioscrobbler.com/2.0/'
 

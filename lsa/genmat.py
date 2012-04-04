@@ -29,7 +29,7 @@ import sqlite3
 import struct
 
 from math import log, log1p
-from util import (MATRIX_PATH, TAGS_PATH, WEIGHTS_PATH,
+from uutils import (MATRIX_PATH, TAGS_PATH, WEIGHTS_PATH,
         dump_tags, dump_weights, create_tree)
 
 

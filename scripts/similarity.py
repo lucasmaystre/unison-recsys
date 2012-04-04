@@ -11,7 +11,7 @@ import sqlite3
 import struct
 
 from math import log, log1p, sqrt
-from util import (DB_PATH, TAGS_PATH, WEIGHTS_PATH,
+from uutils import (DB_PATH, TAGS_PATH, WEIGHTS_PATH,
         get_dimensions, get_vector, print_vector, print_track)
 
 

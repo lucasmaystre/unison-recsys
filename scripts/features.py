@@ -7,7 +7,7 @@ import sqlite3
 import struct
 import sys
 
-from util import DB_PATH, get_vector, print_vector
+from uutils import DB_PATH, get_vector, print_vector
 
 
 def _parse_args():

@@ -4,10 +4,10 @@
 import argparse
 import json
 
-from util import print_track
+from uutils import print_track
 
 
-DATASET_ROOT = './data/lastfm_raw'
+DATASET_ROOT = '../data/lastfm_raw'
 
 
 def tid(string):

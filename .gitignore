@@ -4,7 +4,7 @@
 
 # Python virtual environment, and generated files.
 /venv/
-gen/
+gen
 
 # Other stuff.
 *.pyc
