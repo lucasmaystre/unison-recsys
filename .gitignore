@@ -10,3 +10,4 @@ gen
 *.pyc
 *.swp
 lastfm.key
+config.yaml

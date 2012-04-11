@@ -1,0 +1,7 @@
+%YAML 1.2
+---
+database:
+  user: USER
+  pass: PASS
+  db: DATABASE
+...
