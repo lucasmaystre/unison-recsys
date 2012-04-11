@@ -1,8 +1,16 @@
 #!/usr/bin/env python
-from flask import Flask
+import yaml
+
+from flask import Flask, request, g
 
 
 app = Flask(__name__)
+
+
+@app.before_request
+def config_setup():
+    stream = open('%s/config.yaml' % request.environ['UNISON_ROOT'])
+    g.config = yaml.load(stream)
 
 
 @app.route('/')
