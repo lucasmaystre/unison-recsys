@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import psycopg2
 import yaml
 
 from flask import Flask, request, g
@@ -8,14 +9,21 @@ app = Flask(__name__)
 
 
 @app.before_request
-def config_setup():
+def setup_request():
+    # Read the configuration.
     stream = open('%s/config.yaml' % request.environ['UNISON_ROOT'])
     g.config = yaml.load(stream)
+    # Connect to the database.
+    conf = g.config['database']
+    g.db = psycopg2.connect(user=conf.get('user'), password=conf.get('pass'),
+            host=conf.get('host'), dbname=conf.get('db'))
 
 
 @app.route('/')
 def hello_world():
-    return 'Hello, Welcome to the API!'
+    c = g.db.cursor()
+    c.execute('SELECT * FROM "user"')
+    return 'Hello, Welcome to the API! ' + str(c.fetchall())
 
 
 @app.route('/users/<uuid>', methods=['PUT'])

@@ -3,5 +3,6 @@
 database:
   user: USER
   pass: PASS
+  host: HOST
   db: DATABASE
 ...
