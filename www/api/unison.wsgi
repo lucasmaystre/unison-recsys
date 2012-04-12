@@ -6,6 +6,7 @@ environment setup is already done by mod_wsgi (see Apache config).
 """
 
 import sys
+import yaml
 
 
 def application(environ, start_response):
@@ -15,4 +16,8 @@ def application(environ, start_response):
     """
     sys.path.insert(0, '%s/www/api/unison' % environ['UNISON_ROOT'])
     from unison import app
+    # Set up configuration options.
+    config = yaml.load(open('%s/config.yaml' % environ['UNISON_ROOT']))
+    app.debug = config['debug']
+    # Start the flask app.
     return app(environ, start_response)

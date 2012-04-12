@@ -1,8 +1,9 @@
 #!/usr/bin/env python
-import psycopg2
 import yaml
+import models
 
-from flask import Flask, request, g
+from flask import Flask, request, g, jsonify
+from storm.locals import create_database, Store
 
 
 app = Flask(__name__)
@@ -13,17 +14,14 @@ def setup_request():
     # Read the configuration.
     stream = open('%s/config.yaml' % request.environ['UNISON_ROOT'])
     g.config = yaml.load(stream)
-    # Connect to the database.
-    conf = g.config['database']
-    g.db = psycopg2.connect(user=conf.get('user'), password=conf.get('pass'),
-            host=conf.get('host'), dbname=conf.get('db'))
+    # Set up the database.
+    database = create_database(g.config['database']['string'])
+    g.store = Store(database)
 
 
 @app.route('/')
 def hello_world():
-    c = g.db.cursor()
-    c.execute('SELECT * FROM "user"')
-    return 'Hello, Welcome to the API! ' + str(c.fetchall())
+    return 'Hello, Welcome to the API!'
 
 
 @app.route('/users/<uuid>', methods=['PUT'])
@@ -54,12 +52,24 @@ def update_library(uuid):
 
 @app.route('/rooms', methods=['GET'])
 def list_rooms():
-    return """Get a list of rooms."""
+    """Get a list of rooms."""
+    rooms = list()
+    for room in g.store.find(models.Room):
+        rooms.append({
+          'name': room.name,
+          'participants': room.users.count()
+        })
+    return jsonify(rooms=rooms)
 
 
 @app.route('/rooms', methods=['POST'])
 def create_room():
-    return """Create a new room."""
+    """Create a new room."""
+    room = models.Room()
+    room.name = request.form['name']
+    g.store.add(room)
+    g.store.commit()
+    return list_rooms()
 
 
 @app.route('/rooms/<int:id>', methods=['GET'])
