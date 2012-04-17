@@ -7,6 +7,8 @@ import os
 import os.path
 import struct
 
+from functools import wraps
+
 
 GEN_ROOT = './gen'
 TAGS_PATH = '%s/tags.marshal' % GEN_ROOT
@@ -16,6 +18,17 @@ DB_PATH = '%s/tags.db' % GEN_ROOT
 WEIGHTS_PATH = '%s/weights.marshal' % GEN_ROOT
 
 QUERY_SELECT = "SELECT vector, weight FROM tags WHERE name = ?"
+
+
+def memo(func):
+    """Memoize decorator."""
+    cache = {}
+    @wraps(func)
+    def wrap(*args):
+        if args not in cache:
+            cache[args] = func(*args)
+        return cache[args]
+    return wrap
 
 
 def _load(path):
@@ -62,7 +75,7 @@ def load_weights(path=WEIGHTS_PATH):
     return _load(path)
 
 
-def get_vector(conn, tag):
+def get_vector(conn, tag, normalize=True):
     """Read a feature vector from the database.
 
     Small helper function that takes:
@@ -79,9 +92,10 @@ def get_vector(conn, tag):
     for i in xrange(0, len(raw), 4):
         val, = struct.unpack('!f', raw[i:i+4])
         vector.append(val)
-    norm = math.sqrt(sum([x*x for x in vector]))
-    if norm > 0:
-        return tuple([x / norm for x in vector]), weight
+    if normalize:
+        norm = math.sqrt(sum([x*x for x in vector]))
+        if norm > 0:
+            return tuple([x / norm for x in vector]), weight
     else:
         return tuple(vector), weight
 
