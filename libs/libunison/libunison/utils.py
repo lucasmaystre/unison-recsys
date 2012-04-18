@@ -6,6 +6,8 @@ import math
 import os
 import os.path
 import struct
+import yaml
+import storm.locals
 
 from functools import wraps
 
@@ -120,3 +122,23 @@ def print_track(track):
     print "Tags:   %d" % len(track.get('tags', []))
     for tag in track.get('tags', []):
         print "- %s (%s)" % tuple(tag)
+
+
+def get_config(path=None):
+    """Get the configuration options for Unison."""
+    if path is None:
+        try:
+            # Maybe an environment variable was set.
+            path = '%s/config.yaml' % os.environ['UNISON_ROOT']
+        except KeyError:
+            # As a last resort, just try to find it in the working dir.
+            path = 'config.yaml'
+    return yaml.load(open(path))
+
+
+def get_store(conn_str=None):
+    """Get a Storm store for the Unison database."""
+    if conn_str is None:
+        conn_str = get_config()['database']['string']
+    database = storm.locals.create_database(conn_str)
+    return storm.locals.Store(database)

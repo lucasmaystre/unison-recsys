@@ -16,7 +16,7 @@ import marshal
 import sqlite3
 import struct
 
-from uutils import (DB_PATH, TAGS_PATH, WEIGHTS_PATH, UT_PATH,
+from libunison.utils import (DB_PATH, TAGS_PATH, WEIGHTS_PATH, UT_PATH,
         load_tags, load_weights, create_tree)
 
 

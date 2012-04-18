@@ -7,7 +7,7 @@ import os.path
 import urllib
 import urllib2
 
-from uutils import GEN_ROOT
+from libunison.utils import GEN_ROOT
 
 
 DEFAULT_KEY_FILE = os.path.expanduser('~/lastfm.key')

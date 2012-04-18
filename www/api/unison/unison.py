@@ -3,7 +3,7 @@ import yaml
 
 from functools import wraps
 from flask import Flask, Response, request, g, jsonify
-from models import User, Room, Track, LibEntry, Transaction
+from libunison.models import User, Room, Track, LibEntry, Transaction
 from storm.locals import create_database, Store
 
 

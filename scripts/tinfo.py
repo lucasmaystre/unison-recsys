@@ -4,7 +4,7 @@
 import argparse
 import json
 
-from uutils import print_track
+from libunison.utils import print_track
 
 
 DATASET_ROOT = '../data/lastfm_raw'

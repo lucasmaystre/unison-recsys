@@ -28,7 +28,7 @@ import sys
 from math import exp, log, log1p, sqrt
 from sklearn.naive_bayes import GaussianNB
 from sklearn.svm import SVC, NuSVC
-from uutils import GEN_ROOT, memo, get_vector
+from libunison.utils import GEN_ROOT, memo, get_vector
 
 
 DEFAULT_TRACK_DB = '%s/trackdata.db' % GEN_ROOT
