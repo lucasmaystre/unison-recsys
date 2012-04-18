@@ -41,7 +41,7 @@ STRUCT_FLOAT = struct.Struct('!f')
 
 # SQL queries for the user database.
 SELECT_USERID = "SELECT ROWID FROM users WHERE name = ?"
-SELECT_TRACKS = "SELECT artist, title, status FROM tracks WHERE user = ? AND status = 'banned'"
+SELECT_TRACKS = "SELECT artist, title, status FROM tracks WHERE user = ?"
 
 # SQL queries for the tracks database.
 SELECT_TAGS = "SELECT tags FROM tracks WHERE artist = ? AND title = ?"
@@ -86,13 +86,13 @@ def gen_features(username, userdb, trackdb, tagdb, dim, out):
     f.close()
 
 
-_tag_freq = dict()
+#_tag_freq = dict()
 def track_features(tags, tag_features, dimensions):
-    global _tag_freq
+    #global _tag_freq
     vector = [0] * dimensions
     total = 0
     for tag, count in tags:
-        _tag_freq[tag] = _tag_freq.get(tag, 0) + int(count)
+        #_tag_freq[tag] = _tag_freq.get(tag, 0) + int(count)
         curr, gw = tag_features(tag)
         if curr is None:
             continue
@@ -263,9 +263,9 @@ if __name__ == '__main__':
             tagdb = sqlite3.connect(args.tag_db),
             dim = args.dimensions,
             out = args.out)
-        for tag in sorted(_tag_freq, key=_tag_freq.get, reverse=True):
-            if _tag_freq[tag] > 10:
-                print tag, _tag_freq[tag]
+        #for tag in sorted(_tag_freq, key=_tag_freq.get, reverse=True):
+        #    if _tag_freq[tag] > 10:
+        #        print tag, _tag_freq[tag]
     elif args.action == 'genmodel':
         gen_model(args.trainset, args.dimensions, args.out)
     elif args.action == 'classify':
