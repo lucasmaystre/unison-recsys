@@ -1,8 +1,16 @@
 %YAML 1.2
 ---
+# Main PostgreSQL database.
 database:
-  user: USER
-  pass: PASS
-  host: HOST
-  db: DATABASE
+  string: "postgres://USER:PASS@HOST/DATABASE"
+# RabbitMQ message queue used to get the tags.
+queue:
+  host: HOSTNAME
+  name: QUEUE_NAME
+# Last.fm web services.
+lastfm:
+  key: deadbeefdeadbeefdeadbeefdeadbeef
+# General config options.
+tagfeats: /path/to/tags/database
+debug: true
 ...
