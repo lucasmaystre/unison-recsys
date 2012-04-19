@@ -28,7 +28,10 @@ class LastFM(object):
         if type(data) is not dict:
             raise LookupError('last.fm returned garbage.')
         if 'toptags' not in data:
-            raise ValueError("last.fm says '%s'" % res.get('message'))
+            if int(data.get('error', 0)) == 6:
+                raise LookupError("Track not found")
+            else:
+                raise LookupError("last.fm returned: %r" % res)
         toptags = data['toptags'].get('tag', [])
         # When there is a single tag, last.fm doesn't wrap it in an array.
         if type(toptags) is dict:
@@ -59,7 +62,7 @@ class LastFM(object):
             raise LookupError('last.fm returned garbage.')
         root = data.get(what)
         if root is None:
-            raise LookupError('last.fm says: %r' % data)
+            raise LookupError('last.fm returned: %r' % data)
         attrs = root.get('@attr')
         if attrs is None:
             # There are no tracks (XML attributes have been inlined in the JSON).

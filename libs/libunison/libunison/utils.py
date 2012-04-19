@@ -1,15 +1,18 @@
 #!/usr/bin/env python
 """Utilities for the Unison recommender system."""
 
+import base64
 import marshal
 import math
 import os
 import os.path
 import struct
 import yaml
+import sqlite3
 import storm.locals
 
 from functools import wraps
+from math import log, log1p
 
 
 GEN_ROOT = './gen'
@@ -78,6 +81,11 @@ def load_weights(path=WEIGHTS_PATH):
 
 
 def get_vector(conn, tag, normalize=True):
+    # TODO Legacy name. Clean up.
+    return tag_features(tag, conn, normalize)
+
+
+def tag_features(tag, conn=None, normalize=False):
     """Read a feature vector from the database.
 
     Small helper function that takes:
@@ -86,6 +94,8 @@ def get_vector(conn, tag, normalize=True):
     and returns the feature vector associated with the tag (or None if the tag
     wasn't found in the database).
     """
+    if conn is None:
+        conn = get_feature_db()
     res = conn.execute(QUERY_SELECT, (tag,)).fetchone()
     if res is None:
         return None, None
@@ -102,12 +112,76 @@ def get_vector(conn, tag, normalize=True):
         return tuple(vector), weight
 
 
+def track_features(tags, conn=None, tag_fct=None):
+    """Generate a feature vector for a track.
+
+    The feature vector is entirely generated from the track's associated tags.
+    Optionally, a function used to retrieve the tag features can be specified,
+    which takes a single argument (the name of the tag). One use case is
+    memoization:
+
+        @utils.memo
+        def tag_fct(tag):
+            return utils.tag_features(tag, conn=conn)
+    """
+    if conn is None:
+        conn = get_feature_db()
+    if tag_fct is None:
+        # Small closure around tag_features.
+        tag_fct = lambda tag: tag_features(tag, conn=conn)
+    vector = [0] * get_dimensions(conn)
+    total = 0
+    for tag, count in tags:
+        if count == 0:
+            continue
+        curr, gw = tag_fct(tag)
+        if curr is None:
+            continue
+        weight = gw * log1p(float(count)) / log(2)
+        vector = [(weight*x + y) for x, y in zip(curr, vector)]
+        total += weight
+    # Normalizing the vector would make us lose independence of features.
+    # However, we should still compensate for the document's length.
+    return tuple([x / total for x in vector]) if total > 0 else None
+
+
+def b64enc(raw):
+    return base64.urlsafe_b64encode(raw).strip('=')
+
+
+def b64dec(enc):
+    padded = enc + '=' * (4 - len(enc) % 4)
+    return base64.urlsafe_b64decode(padded)
+
+
+def encode_features(features):
+    raw = str()
+    for val in features:
+        raw += struct.pack('!f', val)
+    return b64enc(raw).decode('ascii')
+
+
+def decode_features(encoded):
+    raw = b64dec(encoded)
+    features = list()
+    for i in xrange(0, len(raw), 4):
+        val, = struct.unpack('!f', raw[i:i+4])
+        features.append(val)
+    return features
+
+
+@memo
 def get_dimensions(conn):
     res = conn.execute("SELECT vector FROM tags LIMIT 1").fetchone()
     return len(res[0]) / 4
 
 
 def print_vector(vector, weight=None):
+    # TODO Legacy name for print_features. Clean up.
+    return print_features(vector, weight)
+
+
+def print_features(vector, weight=None):
     """Pretty print a feature vector."""
     print tuple([('%.2f' % x) for x in vector])
     print "l2-norm: %.2f" % math.sqrt(sum([x*x for x in vector]))
@@ -124,6 +198,7 @@ def print_track(track):
         print "- %s (%s)" % tuple(tag)
 
 
+@memo
 def get_config(path=None):
     """Get the configuration options for Unison."""
     if path is None:
@@ -142,3 +217,9 @@ def get_store(conn_str=None):
         conn_str = get_config()['database']['string']
     database = storm.locals.create_database(conn_str)
     return storm.locals.Store(database)
+
+
+def get_feature_db(path=None):
+    if path is None:
+        path = get_config()['tagfeats']
+    return sqlite3.connect(path)
