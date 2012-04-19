@@ -26,7 +26,7 @@ CREATE TABLE track (
   artist    text NOT NULL,
   title     text NOT NULL,
   tags      text, -- JSON array
-  features  text -- Base64 encoded
+  features  text, -- Base64 encoded
   UNIQUE (artist, title)
 );
 CREATE INDEX track_artist_title_idx ON track(artist, title);

@@ -44,8 +44,8 @@ class Fetcher(object):
         # Creates the queue if it doesn't exist yet.
         channel.queue_declare(queue=queue, durable=True)
         # Process items from the queue. We ack them immediately.
-        channel.basic_consume(self._process, queue=queue, no_ack=True)
         self._logger.info("start listening on queue '%s'..." % queue)
+        channel.basic_consume(self._process, queue=queue, no_ack=True)
         channel.start_consuming()
 
     def close(self):
