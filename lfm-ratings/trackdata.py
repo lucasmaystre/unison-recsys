@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import libunison.utils as uutils
 import sqlite3
 import sys
 import urllib
@@ -9,7 +10,7 @@ import urllib2
 import time
 
 
-DEFAULT_KEY_FILE = '../lastfm.key'
+CONFIG = uutils.get_config()
 DEFAULT_IN_DATABASE = 'gen/userdata.db'
 DEFAULT_OUT_DATABASE = 'gen/trackdata.db'
 API_ROOT = 'http://ws.audioscrobbler.com/2.0/'
@@ -32,7 +33,7 @@ QUERY_GET_USER = 'SELECT ROWID FROM users WHERE name = ?'
 QUERY_GET_TRACKS = 'SELECT artist, title FROM tracks WHERE user = ?'
 
 
-def process(artist, title, db_conn, api_key):
+def process(artist, title, db_conn):
     res = out_conn.execute(QUERY_TRACK_EXISTS, (artist, title)).fetchone()
     if res is not None:
         # Track is already in database.
@@ -41,7 +42,7 @@ def process(artist, title, db_conn, api_key):
         return
     # Track not in database. We have to fetch the tags.
     time.sleep(1)
-    res = lastfm_toptags(artist, title, api_key)
+    res = lastfm_toptags(artist, title)
     if 'toptags' not in res:
         raise ValueError("last.fm says '%s'" % res.get('message'))
     toptags = res['toptags'].get('tag', [])
@@ -56,10 +57,10 @@ def process(artist, title, db_conn, api_key):
     sys.stdout.flush()
 
 
-def lastfm_toptags(artist, title, api_key):
+def lastfm_toptags(artist, title):
     params = {
       'format'     : 'json',
-      'api_key'    : api_key,
+      'api_key'    : CONFIG['lastfm']['key'],
       'method'     : 'track.gettoptags',
       'autocorrect': '1',
       'artist'     : artist.encode('utf-8'),
@@ -72,7 +73,6 @@ def lastfm_toptags(artist, title, api_key):
 
 def _parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--key', default=DEFAULT_KEY_FILE)
     parser.add_argument('--in-db', default=DEFAULT_IN_DATABASE)
     parser.add_argument('--out-db', default=DEFAULT_OUT_DATABASE)
     parser.add_argument('users')
@@ -81,7 +81,6 @@ def _parse_args():
 
 if __name__ == '__main__':
     args = _parse_args()
-    api_key = open(args.key).read().strip()
     # Setup input DB
     in_conn = sqlite3.connect(args.in_db)
     # Setup output DB.
@@ -97,7 +96,7 @@ if __name__ == '__main__':
         uid = res[0]
         for row in in_conn.execute(QUERY_GET_TRACKS, (uid,)).fetchall():
             try:
-                process(row[0], row[1], out_conn, api_key)
+                process(row[0], row[1], out_conn)
             except Exception as e:
                 print "problem while processing (%s, %s): %s" % (
                         row[0], row[1], e)

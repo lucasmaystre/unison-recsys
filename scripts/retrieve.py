@@ -7,15 +7,15 @@ import os.path
 import urllib
 import urllib2
 
-from libunison.utils import GEN_ROOT
+from libunison.utils import GEN_ROOT, get_config
 
 
-DEFAULT_KEY_FILE = os.path.expanduser('~/lastfm.key')
+CONFIG = get_config()
 DEFAULT_FOLDER = '%s/metadata' % GEN_ROOT
 API_ROOT = 'http://ws.audioscrobbler.com/2.0/'
 
 
-def process(file_path, api_key):
+def process(file_path):
     # Get the ID3 tags, fail if not present.
     meta = mutagen.File(file_path, easy=True)
     try:
@@ -29,7 +29,7 @@ def process(file_path, api_key):
     if len(artist) == 0 or len(title) == 0:
         raise ValueError("'title' or 'artist' tag is empty")
     # Call the last.fm API to get the associated tags.
-    res = lastfm_toptags(artist, title, api_key)
+    res = lastfm_toptags(artist, title)
     if 'toptags' not in res:
         raise ValueError("last.fm says '%s'" % res.get('message'))
     toptags = res['toptags'].get('tag', [])
@@ -45,10 +45,10 @@ def process(file_path, api_key):
     }
 
 
-def lastfm_toptags(artist, title, api_key):
+def lastfm_toptags(artist, title):
     params = {
       'format'     : 'json',
-      'api_key'    : api_key,
+      'api_key'    : CONFIG['lastfm']['key'],
       'method'     : 'track.gettoptags',
       'autocorrect': '1',
       'artist'     : artist.encode('utf-8'),
@@ -62,14 +62,12 @@ def lastfm_toptags(artist, title, api_key):
 def _parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('file', nargs='+')
-    parser.add_argument('--key', default=DEFAULT_KEY_FILE)
     parser.add_argument('--dest', default=DEFAULT_FOLDER)
     return parser.parse_args()
 
 
 if __name__ == '__main__':
     args = _parse_args()
-    api_key = open(args.key).read().strip()
     folder = os.path.abspath(args.dest)
     if not os.path.exists(folder):
         os.makedirs(folder)
@@ -77,7 +75,7 @@ if __name__ == '__main__':
         base = os.path.basename(f)
         try:
             print "Processing '%s'..." % f
-            data = process(f, api_key)
+            data = process(f)
         except ValueError as ve:
             print "Error with file: %s" % ve
             continue

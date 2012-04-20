@@ -3,6 +3,7 @@
 import argparse
 import httplib
 import json
+import libunison.utils as uutils
 import sqlite3
 import sys
 import time
@@ -10,7 +11,7 @@ import urllib
 import urllib2
 
 
-DEFAULT_KEY_FILE = '../lastfm.key'
+CONFIG = uutils.get_config()
 DEFAULT_DATABASE = 'gen/userdata.db'
 DEFAULT_MAX_PAGES = 10
 API_ROOT = 'http://ws.audioscrobbler.com/2.0/'
@@ -31,11 +32,11 @@ INSERT_TRACK = ('INSERT INTO tracks (user, status, artist, title, timestamp) '
         + 'VALUES (?, ?, ?, ?, ?)')
 
 
-def get_tracks(what, user, key, page, limit):
+def get_tracks(what, user, page, limit):
     time.sleep(1)
     params = {
       'format' : 'json',
-      'api_key': api_key,
+      'api_key': CONFIG['lastfm']['key'],
       'method' : 'user.get%s' % what,
       'user'   : user.encode('utf-8'),
       'page'   : page,
@@ -72,29 +73,29 @@ def get_tracks(what, user, key, page, limit):
     return (elems, int(pages))
 
 
-def get_banned(user, key, page=1, limit=50):
-    return get_tracks('bannedtracks', user, key, page, limit)
+def get_banned(user, page=1, limit=50):
+    return get_tracks('bannedtracks', user, page, limit)
 
 
-def get_loved(user, key, page=1, limit=50):
-    return get_tracks('lovedtracks', user, key, page, limit)
+def get_loved(user, page=1, limit=50):
+    return get_tracks('lovedtracks', user, page, limit)
 
 
-def process(user, max_pages, key, conn):
+def process(user, max_pages, conn):
     id = select_or_insert(user, conn)
     # Get the banned tracks.
-    #subset, pages = get_banned(user, key)
+    #subset, pages = get_banned(user)
     #banned = list(subset)
     #for i in xrange(2, min(pages, max_pages) + 1):
-    #    subset, pages = get_banned(user, key, page=i)
+    #    subset, pages = get_banned(user, page=i)
     #    banned.extend(subset)
     #insert_tracks('banned', banned, id, conn)
     #print " (banned: done)"
     # Get the loved tracks.
-    subset, pages = get_loved(user, key)
+    subset, pages = get_loved(user)
     loved = list(subset)
     for i in xrange(2, min(pages, max_pages) + 1):
-        subset, pages = get_loved(user, key, page=i)
+        subset, pages = get_loved(user, page=i)
         loved.extend(subset)
     insert_tracks('loved', loved, id, conn)
     print " (loved: done)"
@@ -121,7 +122,6 @@ def select_or_insert(user, conn):
 
 def _parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--key', default=DEFAULT_KEY_FILE)
     parser.add_argument('--db', default=DEFAULT_DATABASE)
     parser.add_argument('--max-pages', type=int, default=DEFAULT_MAX_PAGES)
     parser.add_argument('users')
@@ -130,14 +130,13 @@ def _parse_args():
 
 if __name__ == '__main__':
     args = _parse_args()
-    api_key = open(args.key).read().strip()
     conn = sqlite3.connect(args.db)
     conn.executescript(DB_SCHEMA)
     for line in open(args.users):
         user = line.strip()
         print "Processing user '%s'..." % user
         try:
-            process(user, args.max_pages, api_key, conn)
+            process(user, args.max_pages, conn)
         except (urllib2.URLError, ValueError, LookupError) as error:
             print "Error: %s" % error
         except (httplib.HTTPException) as error:

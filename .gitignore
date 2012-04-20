@@ -9,5 +9,4 @@ gen
 # Other stuff.
 *.pyc
 *.swp
-lastfm.key
 config.yaml
