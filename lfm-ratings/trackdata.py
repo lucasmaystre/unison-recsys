@@ -3,6 +3,7 @@
 import argparse
 import json
 import libunison.utils as uutils
+import liblfm
 import sqlite3
 import sys
 import urllib
@@ -42,33 +43,13 @@ def process(artist, title, db_conn):
         return
     # Track not in database. We have to fetch the tags.
     time.sleep(1)
-    res = lastfm_toptags(artist, title)
-    if 'toptags' not in res:
-        raise ValueError("last.fm says '%s'" % res.get('message'))
-    toptags = res['toptags'].get('tag', [])
-    # When there is a single tag, last.fm doesn't wrap it in an array.
-    if type(toptags) is dict:
-        toptags = [toptags]
-    # Reformat and insert the metadata in the database.
-    tags = json.dumps([[tag['name'], tag['count']] for tag in toptags])
+    lfm = liblfm.LastFM(CONFIG['lastfm']['key'])
+    # Insert the metadata in the database.
+    tags = json.dumps(lfm.top_tags(artist, title))
     db_conn.execute(QUERY_INSERT_TRACK, (artist, title, tags))
     db_conn.commit()
     sys.stdout.write(".")
     sys.stdout.flush()
-
-
-def lastfm_toptags(artist, title):
-    params = {
-      'format'     : 'json',
-      'api_key'    : CONFIG['lastfm']['key'],
-      'method'     : 'track.gettoptags',
-      'autocorrect': '1',
-      'artist'     : artist.encode('utf-8'),
-      'track'      : title.encode('utf-8')
-    }
-    query_str = urllib.urlencode(params)
-    res = urllib2.urlopen(API_ROOT, query_str).read()
-    return json.loads(res)
 
 
 def _parse_args():

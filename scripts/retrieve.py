@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import liblfm
 import mutagen
 import os.path
 import urllib
@@ -21,42 +22,20 @@ def process(file_path):
     try:
         artist = meta.get('artist', []).pop(0)
     except IndexError:
-        raise ValueError("file has no ID3 'artist' tag")
+        raise LookupError("file has no ID3 'artist' tag")
     try:
         title = meta.get('title', []).pop(0)
     except IndexError:
-        raise ValueError("file has no ID3 'title' tag")
+        raise LookupError("file has no ID3 'title' tag")
     if len(artist) == 0 or len(title) == 0:
-        raise ValueError("'title' or 'artist' tag is empty")
+        raise LookupError("'title' or 'artist' tag is empty")
     # Call the last.fm API to get the associated tags.
-    res = lastfm_toptags(artist, title)
-    if 'toptags' not in res:
-        raise ValueError("last.fm says '%s'" % res.get('message'))
-    toptags = res['toptags'].get('tag', [])
-    # When there is a single tag, last.fm doesn't wrap it in an array.
-    if type(toptags) is dict:
-        toptags = [toptags]
-    # Return a dict with the metadata in the last.fm MSD format.
-    tags = [[tag['name'], tag['count']] for tag in toptags]
+    lfm = liblfm.LastFM(CONFIG['lastfm']['key'])
     return {
       'artist': artist,
       'title': title,
-      'tags': tags,
+      'tags': lfm.top_tags(artist, title),
     }
-
-
-def lastfm_toptags(artist, title):
-    params = {
-      'format'     : 'json',
-      'api_key'    : CONFIG['lastfm']['key'],
-      'method'     : 'track.gettoptags',
-      'autocorrect': '1',
-      'artist'     : artist.encode('utf-8'),
-      'track'      : title.encode('utf-8')
-    }
-    query_str = urllib.urlencode(params)
-    res = urllib2.urlopen(API_ROOT, query_str).read()
-    return json.loads(res)
 
 
 def _parse_args():
@@ -76,7 +55,7 @@ if __name__ == '__main__':
         try:
             print "Processing '%s'..." % f
             data = process(f)
-        except ValueError as ve:
+        except LookupError as ve:
             print "Error with file: %s" % ve
             continue
         except urllib2.URLError as ue:
