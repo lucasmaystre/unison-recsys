@@ -11,17 +11,6 @@ Example Apache configuration file (suppose ROOT is the root folder for Unison):
         CustomLog "/private/var/log/apache2/unison.local-access_log" common
         LogLevel info
 
-        # Set an environment variables that the WSGI app can access.
-        SetEnv UNISON_ROOT %{ROOT}
-
-        # Set up WSGI so that it includes the packages from the virtual env.
-        WSGIDaemonProcess unison \
-          python-path=%{ROOT}/venv/lib/python2.6/site-packages
-        WSGIProcessGroup unison
-
-        WSGIApplicationGroup %{GLOBAL}
-        WSGIScriptAlias /api %{ROOT}/www/api/unison.wsgi
-
         <Directory %{ROOT}/www>
             Order allow,deny
             Allow from all
