@@ -8,6 +8,8 @@ environment setup is already done by mod_wsgi (see Apache config).
 import sys
 import yaml
 
+# Redirect output to apache logs.
+sys.stdout = sys.stderr
 
 def application(environ, start_response):
     """Handle a request.
@@ -17,6 +19,7 @@ def application(environ, start_response):
     sys.path.insert(0, '%s/api/unison' % environ['UNISON_ROOT'])
     from unison import app
     # Set up configuration options.
+    # TODO better logging.
     config = yaml.load(open('%s/config.yaml' % environ['UNISON_ROOT']))
     app.debug = config['debug']
     # Start the flask app.
