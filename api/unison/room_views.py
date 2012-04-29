@@ -2,6 +2,7 @@
 """Room-related views."""
 
 import helpers
+import random
 
 from constants import errors, events
 from flask import Blueprint, request, g, jsonify
@@ -13,7 +14,7 @@ from storm.expr import Desc
 room_views = Blueprint('room_views', __name__)
 
 
-@room_views.route('/', methods=['GET'])
+@room_views.route('', methods=['GET'])
 @helpers.authenticate()
 def list_rooms():
     """Get a list of rooms."""
@@ -29,7 +30,7 @@ def list_rooms():
     return jsonify(rooms=rooms)
 
 
-@room_views.route('/', methods=['POST'])
+@room_views.route('', methods=['POST'])
 @helpers.authenticate()
 def create_room():
     """Create a new room."""
@@ -64,8 +65,6 @@ def get_room_info(rid):
     # Search for the last track that was played.
     results = g.store.find(RoomEvent,
             (RoomEvent.event_type == events.PLAY) & (RoomEvent.room == room))
-    for row in results:
-        print row
     play_event = results.order_by(Desc(RoomEvent.created)).first()
     track = None
     if play_event is not None:
@@ -74,13 +73,13 @@ def get_room_info(rid):
           'title': play_event.payload.get('title'),
         }
         for entry in play_event.payload.get('stats', []):
-            if entry.get('id') in userdict:
-                userdict[entry['id']]['score'] = entry.get('score')
-                userdict[entry['id']]['predicted'] = entry.get('predicted', True)
+            if entry.get('uid') in userdict:
+                userdict[entry['uid']]['score'] = entry.get('score')
+                userdict[entry['uid']]['predicted'] = entry.get('predicted', True)
     users = list()
     for key, val in userdict.iteritems():
         users.append({
-          'id': key,
+          'uid': key,
           'nickname': val.get('nickname'),
           'score': val.get('score'),
           'predicted': val.get('predicted', True)
@@ -88,7 +87,7 @@ def get_room_info(rid):
     master = None
     if room.master is not None:
         master = {
-          'id': room.master.id,
+          'uid': room.master.id,
           'nickname': room.master.nickname
         }
     return jsonify(track=track, master=master, users=users)
@@ -105,11 +104,12 @@ def get_track(user, rid):
     if room.master != user:
         raise helpers.Unauthorized("you are not the DJ")
     # TODO Something better than a random song :)
-    entry = g.store.find(LibEntry, (LibEntry.user == user)
-            & (LibEntry.is_valid == True) & (LibEntry.is_local == True)).any()
-    if entry is None:
+    entries = list(g.store.find(LibEntry, (LibEntry.user == user)
+            & (LibEntry.is_valid == True) & (LibEntry.is_local == True)))
+    if len(entries) == 0:
         raise helpers.NotFound(errors.TRACKS_DEPLETED,
                 'no more tracks to play')
+    entry = random.choice(entries)
     return jsonify({
       'artist': entry.track.artist,
       'title': entry.track.title,
@@ -117,9 +117,10 @@ def get_track(user, rid):
     })
 
 
-@room_views.route('/<int:rid>/current', methods=['PUT', 'DELETE'])
+@room_views.route('/<int:rid>/current', methods=['PUT'])
 @helpers.authenticate(with_user=True)
-def play_skip_track(user, rid):
+def play_track(user, rid):
+    """Register the track that is currently playing."""
     room = g.store.get(Room, rid)
     if room is None:
         raise helpers.BadRequest(errors.INVALID_ROOM,
@@ -140,30 +141,51 @@ def play_skip_track(user, rid):
     payload = {
       'artist': track.artist,
       'title': track.title,
-      'master': {'id': user.id, 'nickname': user.nickname},
+      'master': {'uid': user.id, 'nickname': user.nickname},
     }
-    if request.method == 'PUT':
-        # We're playing a new song.
-        payload['users'] = list()
-        # TODO Something better than random scores :)
-        for resident in room.users:
-            payload['users'].append({
-              'id': resident.id,
-              'nickname': resident.nickname,
-              'score': int(random.random() * 100),
-              'predicted': True if random.random() > 0.2 else False
-            })
-    else:  # request.method == 'DELETE'
-        # We're skipping the song.
-        event_type = events.SKIP
-    event = RoomEvent(room, user, event_type, payload)
+    payload['stats'] = list()
+    # TODO Something better than random scores :)
+    for resident in room.users:
+        payload['stats'].append({
+          'uid': resident.id,
+          'nickname': resident.nickname,
+          'score': int(random.random() * 100),
+          'predicted': True if random.random() > 0.2 else False
+        })
+    event = RoomEvent(room, user, events.PLAY, payload)
+    g.store.add(event)
+    return helpers.success()
+
+
+@room_views.route('/<int:rid>/current', methods=['DELETE'])
+@helpers.authenticate(with_user=True)
+def skip_track(user, rid):
+    """Skip the track that is currently being played."""
+    room = g.store.get(Room, rid)
+    if room is None:
+        raise helpers.BadRequest(errors.INVALID_ROOM,
+                "room does not exist")
+    if room.master != user:
+        raise helpers.Unauthorized("you are not the master")
+    results = g.store.find(RoomEvent,
+            (RoomEvent.event_type == events.PLAY) & (RoomEvent.room == room))
+    play_event = results.order_by(Desc(RoomEvent.created)).first()
+    if play_event is None:
+        raise helpers.BadRequest(errors.NO_CURRENT_TRACK,
+                "no track to skip")
+    payload = {
+      'artist': play_event.payload.get('artist'),
+      'title': play_event.payload.get('title'),
+      'master': {'uid': user.id, 'nickname': user.nickname},
+    }
+    event = RoomEvent(room, user, events.SKIP, payload)
     g.store.add(event)
     return helpers.success()
 
 
 @room_views.route('/<int:rid>/ratings', methods=['POST'])
 @helpers.authenticate(with_user=True)
-def set_master(user, rid):
+def add_rating(user, rid):
     """Take the DJ spot (if it is available)."""
     room = g.store.get(Room, rid)
     if room is None:
@@ -208,10 +230,10 @@ def set_master(user, rid):
         raise helpers.BadRequest(errors.INVALID_ROOM,
                 "room does not exist")
     try:
-        uid = request.form['user']
-    except KeyError:
+        uid = int(request.form['uid'])
+    except KeyError, ValueError:
         raise helpers.BadRequest(errors.MISSING_FIELD,
-                "missing user")
+                "cannot parse uid")
     if user.id != uid or user.room != room:
         raise helpers.Unauthorized("user not self or not in room")
     if room.master != None:

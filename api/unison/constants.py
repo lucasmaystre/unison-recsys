@@ -21,6 +21,7 @@ errors.INVALID_DELTA = 0x09
 errors.UNAUTHORIZED = 0x0a
 errors.TRACKS_DEPLETED = 0x0b
 errors.MASTER_TAKEN = 0x0c
+errors.NO_CURRENT_TRACK = 0x0d
 
 # Room events.
 events = Namespace()

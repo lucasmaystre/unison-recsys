@@ -3,6 +3,7 @@
 
 import helpers
 import hashlib
+import json
 
 from constants import errors
 from flask import Blueprint, request, g, jsonify
@@ -17,8 +18,8 @@ def local_valid_entries(user):
     rows = g.store.find(LibEntry, (LibEntry.user == user)
             & LibEntry.is_local & LibEntry.is_valid)
     for lib_entry in rows:
-        key = hashlib.sha1(
-                lib_entry.track.artist + lib_entry.track.title).digest()
+        key = hashlib.sha1(lib_entry.track.artist.encode('utf-8')
+                + lib_entry.track.title.encode('utf-8')).digest()
         entrydict[key] = lib_entry
     return entrydict
 
@@ -49,13 +50,13 @@ def set_lib_entry(user, artist, title, local_id=None, rating=None):
         entry.is_local = True
         entry.local_id = local_id
     else:
-        if entry is None:
+        if entry is not None:
             # Invalidate the entry before creating a new one.
-            entry.valid = None
+            entry.is_valid = False
         new_entry = LibEntry(user, track, is_valid=True)
         new_entry.is_local = local_id is not None
         new_entry.local_id = local_id
-        new_entry.rating = None
+        new_entry.rating = rating
         g.store.add(new_entry)
 
 
@@ -100,8 +101,9 @@ def dump_library(user, uid):
         except:
             raise helpers.BadRequest(errors.INVALID_LIBENTRY,
                     "not a valid library entry")
-        key = hashlib.sha1(artist + title).digest()
-        next_entries += key
+        key = hashlib.sha1(artist.encode('utf-8')
+                + title.encode('utf-8')).digest()
+        next_entries.add(key)
         if key not in current_entries:
             set_lib_entry(user, artist, title, local_id=local_id)
     # Invalidate entries that are not in the request.
@@ -127,11 +129,12 @@ def update_library(user, uid):
         except:
             raise helpers.BadRequest(errors.INVALID_DELTA,
                     "not a valid library delta")
-        key = hashlib.sha1(artist + title).digest()
+        key = hashlib.sha1(artist.encode('utf-8')
+                + title.encode('utf-8')).digest()
         if delta_type == 'PUT':
             if key not in current_entries:
                 set_lib_entry(user, artist, title, local_id=local_id)
-        if delta_type == 'DELETE':
+        elif delta_type == 'DELETE':
             if key in current_entries:
                 current_entries[key].is_valid = False
         else:

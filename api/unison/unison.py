@@ -39,7 +39,7 @@ def teardown_request(response):
 @app.errorhandler(401)
 def handle_unauthorized(error):
     if isinstance(error, helpers.Unauthorized):
-        response = jsonify(error=error.error, message=error.message)
+        response = jsonify(error=error.error, message=error.msg)
         response.status_code = 401
         response.headers = {'WWW-Authenticate': 'Basic realm="API Access"'}
         return response
@@ -49,7 +49,7 @@ def handle_unauthorized(error):
 @app.errorhandler(400)
 def handle_bad_request(error):
     if isinstance(error, helpers.BadRequest):
-        response = jsonify(error=error.error, message=error.message)
+        response = jsonify(error=error.error, message=error.msg)
         response.status_code = 400
         return response
     return "bad request", 400
@@ -57,8 +57,8 @@ def handle_bad_request(error):
 
 @app.errorhandler(404)
 def handle_not_found(error):
-    if isinstance(error, helpers.BadRequest):
-        response = jsonify(error=error.error, message=error.message)
+    if isinstance(error, helpers.NotFound):
+        response = jsonify(error=error.error, message=error.msg)
         response.status_code = 404
         return response
     return "not found", 404
@@ -67,7 +67,7 @@ def handle_not_found(error):
 @app.route('/')
 @helpers.authenticate(with_user=True)
 def root(user):
-    return jsonify(user_id=user.id)
+    return jsonify(uid=user.id)
 
 
 if __name__ == '__main__':

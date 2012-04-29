@@ -14,12 +14,12 @@ DEFAULT_PASSWORD = 'h3ll0'
 class UnisonGetter:
 
     URL_FORMAT = "http://api.unison.local%s"
-    
+
     def __init__(self, mail, password):
         mail = base64.b64encode(mail)
         password = base64.b64encode(password)
         self.auth = requests.auth.HTTPBasicAuth(mail, password)
-    
+
     def __getattr__(self, name):
         getter = getattr(requests, name)
         def wrapper(path, data=None):

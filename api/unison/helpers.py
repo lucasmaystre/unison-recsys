@@ -38,7 +38,7 @@ def authenticate(with_user=False):
 
 def ensure_users_match(user, uid):
     if user.id != uid:
-        raise helpers.Unauthorized()
+        raise Unauthorized()
 
 
 def success():
@@ -46,21 +46,21 @@ def success():
 
 
 class BadRequest(werkzeug.exceptions.BadRequest):
-    def __init__(self, error, message):
-        super(BadRequest, self).__init__(message)
+    def __init__(self, error, msg):
+        super(BadRequest, self).__init__(msg)
         self.error = error
-        self.message = message
+        self.msg = msg
 
 
 class NotFound(werkzeug.exceptions.NotFound):
-    def __init__(self, error, message):
-        super(NotFound, self).__init__(message)
+    def __init__(self, error, msg):
+        super(NotFound, self).__init__(msg)
         self.error = error
-        self.message = message
+        self.msg = msg
 
 
 class Unauthorized(werkzeug.exceptions.Unauthorized):
-    def __init__(self, message='could not authenticate'):
-        super(Unauthorized, self).__init__(message)
+    def __init__(self, msg='could not authenticate'):
+        super(Unauthorized, self).__init__(msg)
         self.error = errors.UNAUTHORIZED
-        self.message = message
+        self.msg = msg

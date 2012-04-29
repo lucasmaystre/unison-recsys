@@ -4,6 +4,7 @@
 import helpers
 import libunison.password as password
 import libunison.mail as mail
+import storm.exceptions
 
 from constants import errors
 from flask import Blueprint, request, g, jsonify
@@ -13,7 +14,7 @@ from libunison.models import User, Room, Track, LibEntry, RoomEvent
 user_views = Blueprint('user_views', __name__)
 
 
-@user_views.route('/', methods=['POST'])
+@user_views.route('', methods=['POST'])
 def register_user():
     """Register a new user."""
     try:
@@ -35,8 +36,9 @@ def register_user():
         raise helpers.BadRequest(errors.INVALID_PASSWORD,
                 "password is not satisfactory")
     # All the checks went through, we can create the user.
-    user = User(email, pw)
+    user = User(email, password.encrypt(pw))
     g.store.add(user)
+    g.store.flush()  # Necessary to get an ID.
     return jsonify(user_id=user.id)
 
 
@@ -77,7 +79,13 @@ def update_user_email(user, uid):
     if not mail.is_valid(email):
         raise helpers.BadRequest(errors.INVALID_EMAIL,
                 "e-mail is not valid")
-    user.email = email
+    try:
+        user.email = email
+        g.store.flush()
+    except storm.exceptions.IntegrityError:
+        # E-mail already in database.
+        raise helpers.BadRequest(errors.EXISTING_USER,
+                "e-mail already taken by another user")
     return helpers.success()
 
 
@@ -94,18 +102,18 @@ def update_user_password(user, uid):
     if not password.is_good_enough(pw):
         raise helpers.BadRequest(errors.INVALID_EMAIL,
                 "password is not satisfactory")
-    user.password = pw
+    user.password = password.encrypt(pw)
     return helpers.success()
 
 
 @user_views.route('/<int:uid>/room', methods=['PUT', 'DELETE'])
-@helpers.authenticate
+@helpers.authenticate(with_user=True)
 def update_user_room(user, uid):
     """Join or leave a room."""
     # TODO Create RoomEvent when joining or leaving room.
     helpers.ensure_users_match(user, uid)
     if request.method == 'DELETE':
-        users.room = None
+        user.room = None
         return helpers.success()
     try:
         room_id = int(request.form['room'])
