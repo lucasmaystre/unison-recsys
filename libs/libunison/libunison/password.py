@@ -30,3 +30,8 @@ def verify(password, encrypted):
    key, mac = encrypted.split(':')
    raw_key = base64.b64decode(key)
    return encrypted == encrypt(password, key=raw_key)
+
+
+def is_good_enough(password):
+    # For the moment, we only the length.
+    return len(password) >= 6
