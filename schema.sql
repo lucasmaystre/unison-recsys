@@ -17,6 +17,7 @@ CREATE TABLE "user" (
   id             bigserial PRIMARY KEY,
   creation_time  timestamp NOT NULL DEFAULT now(),
   email          text UNIQUE NOT NULL,
+  email_valid    boolean NOT NULL DEFAULT FALSE,
   password       text NOT NULL,
   nickname       text,
   room_id        bigint,
@@ -68,23 +69,14 @@ CREATE TRIGGER lib_entry_update_time_trigger BEFORE UPDATE
     ON lib_entry FOR EACH ROW EXECUTE PROCEDURE update_time_column();
 
 
-CREATE TABLE room_event_type (
-  id bigserial PRIMARY KEY,
-  name text UNIQUE NOT NULL
-);
-INSERT INTO room_event_type (name) VALUES ('rating');
-INSERT INTO room_event_type (name) VALUES ('join');
-INSERT INTO room_event_type (name) VALUES ('leave');
-INSERT INTO room_event_type (name) VALUES ('play');
-INSERT INTO room_event_type (name) VALUES ('skip');
-INSERT INTO room_event_type (name) VALUES ('master');
-
-
+CREATE TYPE room_event_type
+    AS ENUM ('play', 'rating', 'join', 'leave', 'skip', 'master');
 CREATE TABLE room_event (
   id             bigserial PRIMARY KEY,
   creation_time  timestamp NOT NULL DEFAULT now(),
+  user_id        bigint REFERENCES "user",
   room_id        bigint REFERENCES room,
-  event_type     bigint NOT NULL REFERENCES room_event_type,
+  event_type     room_event_type NOT NULL,
   payload        text -- JSON encoded.
 );
 CREATE INDEX room_event_room_idx ON room_event(room_id);

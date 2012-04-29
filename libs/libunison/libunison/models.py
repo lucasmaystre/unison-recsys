@@ -8,6 +8,7 @@ class User(Storm):
     id = Int(primary=True)
     created = DateTime(name='creation_time')
     email = Unicode()
+    is_email_valid = Bool(name='email_valid')
     password = Unicode()
     nickname = Unicode()
     room_id = Int()
@@ -15,6 +16,10 @@ class User(Storm):
     # Relationships
     room = Reference(room_id, 'Room.id')
     lib_entries = ReferenceSet(id, 'LibEntry.user_id')
+
+    def __init__(self, email=None, password=None):
+        self.email = email
+        self.password = password
 
 
 class Room(Storm):
@@ -30,6 +35,10 @@ class Room(Storm):
     users = ReferenceSet(id, 'User.room_id')
     events = ReferenceSet(id, 'RoomEvent.room_id')
 
+    def __init__(self, name=None, is_active=False):
+        self.name = name
+        self.is_active = is_active
+
 
 class Track(Storm):
     __storm_table__ = 'track'
@@ -41,13 +50,17 @@ class Track(Storm):
     # Relationships
     lib_entries = ReferenceSet(id, 'LibEntry.track_id')
 
+    def __init__(self, artist, title):
+        self.artist = artist
+        self.title = title
+
 
 class LibEntry(Storm):
     __storm_table__ = 'lib_entry'
     id = Int(primary=True)
     created = DateTime(name='creation_time')
     updated = DateTime(name='update_time')
-    user_id = Unicode()
+    user_id = Int()
     track_id = Int()
     local_id = Int()
     is_valid = Bool(name='valid')
@@ -57,11 +70,10 @@ class LibEntry(Storm):
     user = Reference(user_id, 'User.id')
     track = Reference(track_id, 'Track.id')
 
-
-class RoomEventType(Storm):
-    __storm_table__ = 'room_event_type'
-    id = Int(primary=True)
-    name = Unicode()
+    def __init__(self, user=None, track=None, is_valid=False):
+        self.user = user
+        self.track = track
+        self.is_valid = is_valid
 
 
 class RoomEvent(Storm):
@@ -69,8 +81,23 @@ class RoomEvent(Storm):
     id = Int(primary=True)
     created = DateTime(name='creation_time')
     room_id = Int()
-    event_type_id = Int(name='event_type')
-    payload = Unicode()
+    user_id = Int()
+    event_type = Enum(map={
+      # This is ridiculous. Whatever.
+      u'play': u'play',
+      u'rating': u'rating',
+      u'join': u'join',
+      u'leave': u'leave',
+      u'skip': u'skip',
+      u'master': u'master',
+    })
+    payload = JSON()
     # Relationships
-    event_type = Reference(event_type_id, 'RoomEventType.id')
+    user = Reference(user_id, 'User.id')
     room = Reference(room_id, 'Room.id')
+
+    def __init__(self, room, user, event_type, payload=None):
+        self.room = room
+        self.user = user
+        self.event_type = event_type
+        self.payload = payload
