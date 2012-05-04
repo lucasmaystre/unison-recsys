@@ -39,7 +39,7 @@ def register_user():
     user = User(email, password.encrypt(pw))
     g.store.add(user)
     g.store.flush()  # Necessary to get an ID.
-    return jsonify(user_id=user.id)
+    return jsonify(uid=user.id)
 
 
 @user_views.route('/<int:uid>/nickname', methods=['GET'])
@@ -50,7 +50,7 @@ def get_user_nickname(uid):
     if user is None:
         raise helpers.BadRequest(errors.INVALID_USER,
                 "user does not exist")
-    return jsonify(user_id=user.id, nickname=user.nickname)
+    return jsonify(uid=user.id, nickname=user.nickname)
 
 
 @user_views.route('/<int:uid>/nickname', methods=['PUT'])
