@@ -19,7 +19,7 @@ def register_user():
     """Register a new user."""
     try:
         email = request.form['email']
-        pw = request.form['pass']
+        pw = request.form['password']
     except KeyError:
         raise helpers.BadRequest(errors.MISSING_FIELD,
                 "missing e-mail and / or password")
@@ -95,7 +95,7 @@ def update_user_password(user, uid):
     """Update the user's password."""
     helpers.ensure_users_match(user, uid)
     try:
-        pw = request.form['pass']
+        pw = request.form['password']
     except KeyError:
         raise helpers.BadRequest(errors.MISSING_FIELD,
                 "missing password")
@@ -116,11 +116,11 @@ def update_user_room(user, uid):
         user.room = None
         return helpers.success()
     try:
-        room_id = int(request.form['room'])
+        rid = int(request.form['rid'])
     except:
         raise helpers.BadRequest(errors.MISSING_FIELD,
                 "cannot to parse room ID")
-    room = g.store.get(Room, room_id)
+    room = g.store.get(Room, rid)
     if room is None:
         raise helpers.BadRequest(errors.INVALID_ROOM,
                 "room does not exist")

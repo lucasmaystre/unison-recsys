@@ -67,7 +67,13 @@ def handle_not_found(error):
 @app.route('/')
 @helpers.authenticate(with_user=True)
 def root(user):
-    return jsonify(uid=user.id)
+    """Root of the API.
+
+    A call to this resource might be used to test the login credentials and
+    retriever basic information about the user. Not very RESTful, but pretty
+    useful :)
+    """
+    return jsonify(uid=user.id, nickname=user.nickname, rid=user.room_id)
 
 
 if __name__ == '__main__':

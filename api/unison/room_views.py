@@ -23,9 +23,9 @@ def list_rooms():
     rooms = list()
     for room in g.store.find(Room, Room.is_active):
         rooms.append({
-          'id': room.id,
+          'rid': room.id,
           'name': room.name,
-          'participants': room.users.count()
+          'nb_users': room.users.count()
         })
     return jsonify(rooms=rooms)
 
