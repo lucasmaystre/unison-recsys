@@ -19,7 +19,8 @@ def local_valid_entries(user):
             & LibEntry.is_local & LibEntry.is_valid)
     for lib_entry in rows:
         key = hashlib.sha1(lib_entry.track.artist.encode('utf-8')
-                + lib_entry.track.title.encode('utf-8')).digest()
+                + lib_entry.track.title.encode('utf-8')
+                + str(lib_entry.local_id)).digest()
         entrydict[key] = lib_entry
     return entrydict
 
@@ -102,7 +103,7 @@ def dump_library(user, uid):
             raise helpers.BadRequest(errors.INVALID_LIBENTRY,
                     "not a valid library entry")
         key = hashlib.sha1(artist.encode('utf-8')
-                + title.encode('utf-8')).digest()
+                + title.encode('utf-8') + str(local_id)).digest()
         next_entries.add(key)
         if key not in current_entries:
             set_lib_entry(user, artist, title, local_id=local_id)
@@ -130,7 +131,7 @@ def update_library(user, uid):
             raise helpers.BadRequest(errors.INVALID_DELTA,
                     "not a valid library delta")
         key = hashlib.sha1(artist.encode('utf-8')
-                + title.encode('utf-8')).digest()
+                + title.encode('utf-8') + str(local_id)).digest()
         if delta_type == 'PUT':
             if key not in current_entries:
                 set_lib_entry(user, artist, title, local_id=local_id)
