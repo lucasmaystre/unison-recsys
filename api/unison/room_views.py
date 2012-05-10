@@ -74,8 +74,9 @@ def get_room_info(rid):
         }
         for entry in play_event.payload.get('stats', []):
             if entry.get('uid') in userdict:
-                userdict[entry['uid']]['score'] = entry.get('score')
-                userdict[entry['uid']]['predicted'] = entry.get('predicted', True)
+                uid = entry['uid']
+                userdict[uid]['score'] = entry.get('score')
+                userdict[uid]['predicted'] = entry.get('predicted', True)
     users = list()
     for key, val in userdict.iteritems():
         users.append({
@@ -90,7 +91,7 @@ def get_room_info(rid):
           'uid': room.master.id,
           'nickname': room.master.nickname
         }
-    return jsonify(track=track, master=master, users=users)
+    return jsonify(name=room.name, track=track, master=master, users=users)
 
 
 @room_views.route('/<int:rid>', methods=['POST'])
