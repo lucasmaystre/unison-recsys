@@ -113,6 +113,8 @@ def update_user_room(user, uid):
     # TODO Create RoomEvent when joining or leaving room.
     helpers.ensure_users_match(user, uid)
     if request.method == 'DELETE':
+        if user.room is not None and user.room.master == user:
+            user.room.master = None
         user.room = None
         return helpers.success()
     try:
@@ -124,5 +126,8 @@ def update_user_room(user, uid):
     if room is None:
         raise helpers.BadRequest(errors.INVALID_ROOM,
                 "room does not exist")
+    if user.room is not None and user.room.master == user:
+        # The user was his old room's master.
+        user.room.master == None
     user.room = room
     return helpers.success()
