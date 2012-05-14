@@ -237,7 +237,7 @@ def set_master(user, rid):
                 "cannot parse uid")
     if user.id != uid or user.room != room:
         raise helpers.Unauthorized("user not self or not in room")
-    if room.master != None:
+    if room.master != None and room.master != user:
         raise helpers.Unauthorized("someone else is already here")
     room.master = user
     return helpers.success()
@@ -251,7 +251,7 @@ def leave_master(user, rid):
     if room is None:
         raise helpers.BadRequest(errors.INVALID_ROOM,
                 "room does not exist")
-    if room.master != user:
+    if room.master != None and room.master != user:
         raise helpers.Unauthorized("you are not the master")
     room.master = None
     return helpers.success()
