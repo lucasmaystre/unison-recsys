@@ -213,7 +213,7 @@ def add_rating(user, rid):
     event = RoomEvent(room, user, events.RATING)
     event.payload = {
      'artist': track.artist,
-     'title': track.artist,
+     'title': track.title,
      'rating': rating,
     }
     g.store.add(event)
