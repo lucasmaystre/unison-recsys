@@ -4,6 +4,7 @@
 import helpers
 import hashlib
 import json
+import pika
 
 from constants import errors
 from flask import Blueprint, request, g, jsonify
@@ -25,6 +26,38 @@ def local_valid_entries(user):
     return entrydict
 
 
+def init_track(track):
+    """Initialize a new track.
+
+    To be used when creating a new track. In concrete terms, this function
+    generates and sends the jobs that will fetch the track's tags and other
+    information.
+    """
+    meta = {'artist': track.artist, 'title': track.title}
+    tags_msg = json.dumps({
+      'action': 'track-tags',
+      'track': meta,
+    })
+    info_msg = json.dumps({
+      'action': 'track-info',
+      'track': meta,
+    })
+    # Set up the connection.
+    queue = g.config['queue']['name']
+    conn = pika.BlockingConnection(
+            pika.ConnectionParameters(g.config['queue']['host']))
+    channel = conn.channel()
+    # Creates the queue if it doesn't exist yet.
+    channel.queue_declare(queue=queue, durable=True)
+    # Send the messages to the queue.
+    channel.basic_publish(exchange='', routing_key=queue, body=tags_msg,
+            properties=pika.BasicProperties(delivery_mode=2))
+    channel.basic_publish(exchange='', routing_key=queue, body=info_msg,
+            properties=pika.BasicProperties(delivery_mode=2))
+    # Closing the connection flushes all the messages.
+    conn.close()
+
+
 def set_lib_entry(user, artist, title, local_id=None, rating=None):
     """Set a library entry for the user.
 
@@ -39,8 +72,10 @@ def set_lib_entry(user, artist, title, local_id=None, rating=None):
     if track is None:
         # First time that we encounter this track.
         track = Track(artist, title)
-        # TODO Add track to last.fm queue.
         g.store.add(track)
+        # We need to commit *before* sending jobs to the last.fm queue.
+        g.store.commit()
+        init_track(track)
         entry = None
     else:
         # Track already in the system. Maybe the user even has an entry.
