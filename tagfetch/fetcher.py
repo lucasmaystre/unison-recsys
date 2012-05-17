@@ -45,7 +45,7 @@ class Fetcher(object):
         channel.queue_declare(queue=queue, durable=True)
         # Process items from the queue. We ack them immediately.
         self._logger.info("start listening on queue '%s'..." % queue)
-        channel.basic_consume(self._process, queue=queue, no_ack=True)
+        channel.basic_consume(self._process, queue=queue)
         channel.start_consuming()
 
     def close(self):
@@ -58,6 +58,7 @@ class Fetcher(object):
 
         Route the message to the correct function depending on the action.
         """
+        channel.basic_ack(delivery_tag=method.delivery_tag)
         message = json.loads(body)
         if message['action'] == 'track-tags':
             self._track_tags(message['track'])
