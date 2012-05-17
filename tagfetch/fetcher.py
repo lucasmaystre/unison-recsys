@@ -104,7 +104,7 @@ class Fetcher(object):
         try:
             info = self._lfm.track_info(track.artist, track.title)
         except Exception as ex:
-            self._logger.error("couldn't fetch infos for: %r (%r)"
+            self._logger.warn("couldn't fetch infos for: %r (%r)"
                     % (meta, ex))
         else:
             track.image = info['image']
