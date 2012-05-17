@@ -8,7 +8,8 @@ import urllib2
 
 class LastFM(object):
     API_ROOT = 'http://ws.audioscrobbler.com/2.0/'
-    IMAGE_SIZES = {
+    IMAGE_SIZE = {
+      'DEFAULT': 0,
       'small': 1,
       'medium': 2,
       'large': 3,
@@ -30,11 +31,11 @@ class LastFM(object):
         # to put both artist and title in the query parameter named 'track', and
         # hope for the best.
         params = {
-          'format'     : 'json',
-          'api_key'    : self._key,
-          'method'     : 'track.search',
-          'limit'      : '1',  # Just return the first result.
-          'track'      : "%s %s" % (title.encode('utf-8'), artist.encode('utf-8')),
+          'format' : 'json',
+          'api_key': self._key,
+          'method' : 'track.search',
+          'limit'  : '1',  # Just return the first result.
+          'track'  : "%s %s" % (title.encode('utf-8'), artist.encode('utf-8')),
         }
         query_str = urllib.urlencode(params)
         res = urllib2.urlopen(self.API_ROOT, query_str).read()
@@ -53,9 +54,10 @@ class LastFM(object):
         if 'image' in track:
             current_size = -1
             for item in track['image']:
-                if '#text' in item and item.get('size', 0) > current_size:
+                size = item.get('size', 'DEFAULT')
+                if '#text' in item and self.IMAGE_SIZE[size] > current_size:
                     img_url = item['#text']
-                    current_size = item.get('size', 0)
+                    current_size = self.IMAGE_SIZE[size]
         return {
           'title': track.get('name'),
           'artist': track.get('artist'),

@@ -43,8 +43,12 @@ class Room(Storm):
 class Track(Storm):
     __storm_table__ = 'track'
     id = Int(primary=True)
+    created = DateTime(name='creation_time')
+    updated = DateTime(name='update_time')
     artist = Unicode()
     title = Unicode()
+    image = Unicode()
+    listeners = Int()
     tags = Unicode()
     features = Unicode()
     # Relationships
