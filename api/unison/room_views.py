@@ -65,12 +65,18 @@ def get_room_info(rid):
     # Search for the last track that was played.
     results = g.store.find(RoomEvent,
             (RoomEvent.event_type == events.PLAY) & (RoomEvent.room == room))
-    play_event = results.order_by(Desc(RoomEvent.created)).first()
     track = None
+    play_event = results.order_by(Desc(RoomEvent.created)).first()
     if play_event is not None:
+        artist = play_event.payload.get('artist')
+        title = play_event.payload.get('title')
+        row = g.store.find(Track, (Track.artist == artist)
+                & (Track.title == title)).one()
+        image = row.image if row is not None else None
         track = {
-          'artist': play_event.payload.get('artist'),
-          'title': play_event.payload.get('title'),
+          'artist': artist,
+          'title': title,
+          'image': image,
         }
         for entry in play_event.payload.get('stats', []):
             if entry.get('uid') in userdict:
