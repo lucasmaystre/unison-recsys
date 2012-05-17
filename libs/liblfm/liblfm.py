@@ -8,9 +8,60 @@ import urllib2
 
 class LastFM(object):
     API_ROOT = 'http://ws.audioscrobbler.com/2.0/'
+    IMAGE_SIZES = {
+      'small': 1,
+      'medium': 2,
+      'large': 3,
+      'extralarge': 4,
+    }
 
     def __init__(self, key):
         self._key = key
+
+    def track_info(self, artist, title):
+        """Get various track metadata.
+
+        Currently, it returns a dict with the following information:
+        - 'listeners': number of people listening to this song on last.fm
+        - 'image': a URL to an image representing the track (usually a cover)
+        """
+        # Implementation detail: the 'artist' parameter seems to be broken on
+        # the last.fm API (e.g. with Deadmau5 - Strobe). It seems to work better
+        # to put both artist and title in the query parameter named 'track', and
+        # hope for the best.
+        params = {
+          'format'     : 'json',
+          'api_key'    : self._key,
+          'method'     : 'track.search',
+          'limit'      : '1',  # Just return the first result.
+          'track'      : "%s %s" % (title.encode('utf-8'), artist.encode('utf-8')),
+        }
+        query_str = urllib.urlencode(params)
+        res = urllib2.urlopen(self.API_ROOT, query_str).read()
+        data = json.loads(res)
+        if type(data) is not dict:
+            raise LookupError('last.fm returned garbage')
+        if 'results' not in data or type(data['results']) is not dict:
+            raise LookupError('last.fm returned: %r' % res)
+        matches = data['results'].get('trackmatches')
+        if type(matches) is not dict:
+            raise LookupError('track not found')
+        track = matches.get('track')
+        if type(track) is not dict:
+            raise LookupError('track is not a dict? WTF?')
+        img_url = None
+        if 'image' in track:
+            current_size = -1
+            for item in track['image']:
+                if '#text' in item and item.get('size', 0) > current_size:
+                    img_url = item['#text']
+                    current_size = item.get('size', 0)
+        return {
+          'title': track.get('name'),
+          'artist': track.get('artist'),
+          'image': img_url,
+          'listeners': int(track.get('listeners', 0)),
+        }
 
     def top_tags(self, artist, title):
         """Get the top tags for a track."""
@@ -20,7 +71,7 @@ class LastFM(object):
           'method'     : 'track.gettoptags',
           'autocorrect': '1',
           'artist'     : artist.encode('utf-8'),
-          'track'      : title.encode('utf-8')
+          'track'      : title.encode('utf-8'),
         }
         query_str = urllib.urlencode(params)
         res = urllib2.urlopen(self.API_ROOT, query_str).read()

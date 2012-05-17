@@ -39,14 +39,20 @@ ALTER TABLE "user" ADD CONSTRAINT room_fk FOREIGN KEY (room_id) REFERENCES room;
 
 
 CREATE TABLE track (
-  id        bigserial PRIMARY KEY,
-  artist    text NOT NULL,
-  title     text NOT NULL,
-  tags      text, -- JSON array.
-  features  text, -- Base64 encoded.
+  id             bigserial PRIMARY KEY,
+  creation_time  timestamp NOT NULL DEFAULT now(),
+  update_time    timestamp NOT NULL DEFAULT now(),
+  artist         text NOT NULL,
+  title          text NOT NULL,
+  image          text, -- As a URL.
+  listeners      integer, -- Number of listeners on last.fm.
+  tags           text, -- JSON array.
+  features       text, -- Base64 encoded.
   UNIQUE (artist, title)
 );
 CREATE INDEX track_artist_title_idx ON track(artist, title);
+CREATE TRIGGER track_update_time_trigger BEFORE UPDATE
+    ON track FOR EACH ROW EXECUTE PROCEDURE update_time_column();
 
 
 -- Entries in this table are not meant to be updated, except for the "valid"

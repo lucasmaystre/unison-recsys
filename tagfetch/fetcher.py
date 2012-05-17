@@ -54,8 +54,19 @@ class Fetcher(object):
         self._conn.close()
 
     def _process(self, channel, method, properties, body):
-        """Process a message from the queue."""
-        meta = json.loads(body)
+        """Process a message from the queue.
+
+        Route the message to the correct function depending on the action.
+        """
+        message = json.loads(body)
+        if message['action'] == 'track-tags':
+            self._track_tags(message['track'])
+        elif message['action'] == 'track-info':
+            self._track_info(message['track'])
+        # Wait for a while (implements the rate limiting).
+        time.sleep(1.0 / self._rate)
+
+    def _track_tags(self, meta):
         track = self._store.find(Track, (Track.artist == meta['artist'])
                 & (Track.title == meta['title'])).one()
         if track is None:
@@ -75,8 +86,6 @@ class Fetcher(object):
             features = uutils.track_features(tags)
             self._store_tags(track, tags, features)
             self._logger.info("fetched tags for track: %r" % meta)
-        # Wait for a while (implements the rate limiting).
-        time.sleep(1.0 / self._rate)
 
     def _store_tags(self, track, tags, features=None):
         """Store a track's tags in the database."""
@@ -84,6 +93,23 @@ class Fetcher(object):
         if features is not None:
             track.features = uutils.encode_features(features)
         self._store.commit()
+
+    def _track_info(self, meta):
+        track = self._store.find(Track, (Track.artist == meta['artist'])
+                & (Track.title == meta['title'])).one()
+        if track is None:
+            self._logger.warn("track not in database: %r" % meta)
+            return
+        try:
+            info = self._lfm.track_info(track.artist, track.title)
+        except Exception as ex:
+            self._logger.error("couldn't fetch tags for: %r (%r)"
+                    % (meta, ex))
+        else:
+            track.image = info['image']
+            track.listeners = info['listeners']
+            self._store.commit()
+            self._logger.info("fetched track info for: %r" % meta)
 
 
 def _parse_args():
