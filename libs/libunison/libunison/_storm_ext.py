@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import re
+import geometry
 
 from storm.variables import Variable
 from storm.properties import SimpleProperty
@@ -18,7 +19,7 @@ class PointVariable(Variable):
                 raise TypeError("Expected point, found %s" % repr(value))
             try:
                 coords = self.PATTERN.match(value).groupdict()
-                return (float(coords['x']), float(coords['y']))
+                return geometry.Point(float(coords['x']), float(coords['y']))
             except:
                 raise TypeError("Expected point, found %s" % repr(value))
         else:
@@ -27,11 +28,13 @@ class PointVariable(Variable):
             for coordinate in value:
                 if type(coordinate) not in (int, long, float):
                     raise TypeError("Expected point, found %s" % repr(value))
-            return value
+            # Coerce type to the Point namedtuple.
+            return geometry.Point(value[0], value[1])
 
     def parse_get(self, value, to_db):
         if to_db:
-            return unicode(value)
+            # Convert from namedtuple to tuple before calling its __str__.
+            return unicode(tuple(value))
         return value
 
 

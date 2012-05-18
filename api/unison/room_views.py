@@ -2,6 +2,7 @@
 """Room-related views."""
 
 import helpers
+import libunison.geometry as geometry
 import random
 
 from constants import errors, events
@@ -11,6 +12,9 @@ from libunison.models import User, Room, Track, LibEntry, RoomEvent
 from storm.expr import Desc
 
 
+# Maximal number of rooms returned when listing rooms.
+MAX_ROOMS = 10
+
 room_views = Blueprint('room_views', __name__)
 
 
@@ -18,14 +22,26 @@ room_views = Blueprint('room_views', __name__)
 @helpers.authenticate()
 def list_rooms():
     """Get a list of rooms."""
-    # TODO Search rooms that are nearby
-    # See http://archives.postgresql.org/pgsql-novice/2005-02/msg00196.php
+    userloc = None
+    try:
+        lat = float(request.args['lat'])
+        lon = float(request.args['lon'])
+    except KeyError, ValueError:
+        # Sort by descending ID - new rooms come first.
+        key_fct = lambda r: -1 * r.id
+    else:
+        # Sort the rows according to the distance from the user's location.
+        userloc = geometry.Point(lat, lon)
+        key_fct = lambda r: geometry.distance(userloc, r.coordinates)
     rooms = list()
-    for room in g.store.find(Room, Room.is_active):
+    rows = sorted(g.store.find(Room, Room.is_active), key=key_fct)
+    for room in rows[:MAX_ROOMS]:
         rooms.append({
           'rid': room.id,
           'name': room.name,
-          'nb_users': room.users.count()
+          'nb_users': room.users.count(),
+          'distance': (geometry.distance(userloc, room.coordinates)
+                  if userloc is not None else None),
         })
     return jsonify(rooms=rooms)
 
@@ -40,7 +56,7 @@ def create_room():
         raise helpers.BadRequest(errors.MISSING_FIELD,
                 "room name is missing")
     room = Room(name, is_active=True)
-    room.coordinates = (0, 0)  # TODO store the real coordinates.
+    room.coordinates = geometry.Point(0, 0)  # TODO store the real coordinates.
     g.store.add(room)
     return list_rooms()
 
