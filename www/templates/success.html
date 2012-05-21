@@ -1,0 +1,12 @@
+{% extends "signup.html" %}
+{% block content %}
+  <div class="alert alert-success">
+    <button class="close" data-dismiss="alert">&times;</button>
+    <strong>Success!</strong> You're all done.
+  </div>
+  <p>
+    Now that you've successfully signed up, you can start using GroupStreamer.
+    <br />
+    <a id="go" class="btn btn-large btn-primary" href="{{ intent }}">Let's go !</a>
+  </p>
+{% endblock %}

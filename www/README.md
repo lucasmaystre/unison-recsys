@@ -11,14 +11,16 @@ Example Apache configuration file (suppose ROOT is the root folder for Unison):
         CustomLog "/private/var/log/apache2/unison.local-access_log" common
         LogLevel info
 
-        SetEnv UNISON_ROOT /Users/lum/Documents/unison-recsys
+        # Set an environment variables that the WSGI app can access.
+        SetEnv UNISON_ROOT %{ROOT}
 
+        # Set up WSGI so that it includes the packages from the virtual env.
         WSGIDaemonProcess unison-www \
-          python-path=/Users/lum/Documents/unison-recsys/venv/lib/python2.6/site-packages
+          python-path=%{ROOT}/venv/lib/python2.6/site-packages
         WSGIProcessGroup unison-www
 
         WSGIApplicationGroup %{GLOBAL}
-        WSGIScriptAlias / /Users/lum/Documents/unison-recsys/www/www.wsgi
+        WSGIScriptAlias / %{ROOT}/www/www.wsgi
 
         <Directory %{ROOT}/www>
             Order allow,deny
