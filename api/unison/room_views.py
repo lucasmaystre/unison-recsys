@@ -24,9 +24,9 @@ def list_rooms():
     """Get a list of rooms."""
     userloc = None
     try:
-        lat = float(request.args['lat'])
-        lon = float(request.args['lon'])
-    except KeyError, ValueError:
+        lat = float(request.values['lat'])
+        lon = float(request.values['lon'])
+    except (KeyError, ValueError):
         # Sort by descending ID - new rooms come first.
         key_fct = lambda r: -1 * r.id
     else:
@@ -52,11 +52,13 @@ def create_room():
     """Create a new room."""
     try:
         name = request.form['name']
-    except KeyError:
+        lat = float(request.form['lat'])
+        lon = float(request.form['lon'])
+    except (KeyError, ValueError):
         raise helpers.BadRequest(errors.MISSING_FIELD,
-                "room name is missing")
+                "room name, latitude or longitude is missing or invalid")
     room = Room(name, is_active=True)
-    room.coordinates = geometry.Point(0, 0)  # TODO store the real coordinates.
+    room.coordinates = geometry.Point(lat, lon)
     g.store.add(room)
     return list_rooms()
 
@@ -254,7 +256,7 @@ def set_master(user, rid):
                 "room does not exist")
     try:
         uid = int(request.form['uid'])
-    except KeyError, ValueError:
+    except (KeyError, ValueError):
         raise helpers.BadRequest(errors.MISSING_FIELD,
                 "cannot parse uid")
     if user.id != uid or user.room != room:
