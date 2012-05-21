@@ -15,9 +15,9 @@ Example Apache configuration file (suppose ROOT is the root folder for Unison):
         SetEnv UNISON_ROOT %{ROOT}
 
         # Set up WSGI so that it includes the packages from the virtual env.
-        WSGIDaemonProcess unison \
+        WSGIDaemonProcess unison-api \
           python-path=%{ROOT}/venv/lib/python2.6/site-packages
-        WSGIProcessGroup unison
+        WSGIProcessGroup unison-api
 
         WSGIApplicationGroup %{GLOBAL}
         WSGIScriptAlias / %{ROOT}/api/unison.wsgi
