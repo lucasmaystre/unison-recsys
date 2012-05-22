@@ -75,9 +75,11 @@ def signup_form():
 
 
 def gen_intent(email, pw):
+    pw_enc = urllib.quote(pw.encode('utf-8'))
+    email_enc = urllib.quote(email.encode('utf-8'))
     return ("intent:#Intent;action=android.intent.action.VIEW;"
             "package=ch.epfl.unison;S.password=%s;S.email=%s;end"
-            % (urllib.quote(pw), urllib.quote(email)))
+            % (pw_enc, email_enc))
 
 
 @app.route('/m/signup', methods=['POST'])
