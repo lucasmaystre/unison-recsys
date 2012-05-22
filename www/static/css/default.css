@@ -1,4 +1,4 @@
-h1 {
+.signup h1 {
   min-height:60px;
   margin: 1em 0 0.5em 0;
   padding: 10px 0 0 100px;
@@ -8,6 +8,10 @@ h1 {
   background-position: left top; 
 }
 
-a#go {
+.signup a#go {
   margin-top: 1em;
+}
+
+.hero-unit h1 {
+  margin-top: 0.5em;
 }
