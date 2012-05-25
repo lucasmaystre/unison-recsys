@@ -39,6 +39,8 @@ def register_user():
     user = User(email, password.encrypt(pw))
     g.store.add(user)
     g.store.flush()  # Necessary to get an ID.
+    # Default nickname.
+    user.nickname = unicode("user%d" % user.id)
     return jsonify(uid=user.id)
 
 
