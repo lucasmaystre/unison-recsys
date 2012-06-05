@@ -108,8 +108,7 @@ def tag_features(tag, conn=None, normalize=False):
         norm = math.sqrt(sum([x*x for x in vector]))
         if norm > 0:
             return tuple([x / norm for x in vector]), weight
-    else:
-        return tuple(vector), weight
+    return tuple(vector), weight
 
 
 def track_features(tags, conn=None, tag_fct=None):
