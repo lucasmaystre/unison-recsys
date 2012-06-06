@@ -72,7 +72,7 @@ def plot(f, folder):
         for x in results:
             if x[0] == dim:
                 a.append(x[2])
-                b.append(x[2] + 9*x[1]*log(x[4]))
+                b.append(x[2] + (x[1]-1)*x[1]*log(x[4]))
                 c.append(x[2] + 99*x[1]*log(x[4]))
         for i, x in enumerate([a, b, c]):
             plt.plot(x)

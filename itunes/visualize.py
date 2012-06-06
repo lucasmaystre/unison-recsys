@@ -6,17 +6,33 @@ import libunison.utils as uutils
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+import os.path
+import sys
 
 from db import *
 from sklearn import mixture
+from mpl_toolkits.mplot3d import Axes3D
 
 
 DEFAULT_DB = 'gen/itunes.db'
 
 
 def main(args):
-    pts, labels = get_points(args.db, args.user)
-    plot(pts, labels)
+    if args.action == '2d':
+        pts, labels = get_points(args.db, args.user)
+        plot(pts, labels)
+    elif args.action == 'monge':
+        pts, _ = get_points(args.db, args.user, start_dim=1, nb_dim=3)
+        folder = os.path.abspath(args.user)
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        project3d(pts, folder)
+    elif args.action == '3d':
+        users = list()
+        for user in args.users:
+            pts, labels = get_points(args.db, user, start_dim=0, nb_dim=3)
+            users.append((user, pts, labels))
+        plot3d(users)
     
 
 def make_ellipses(gmm, ax, nb):
@@ -75,7 +91,48 @@ def plot(points, labels):
     plt.show()
 
 
-def get_points(dbname, username):
+def plot3d(users):
+    colors = iter(['k', 'r', 'y', 'b', 'g', 'c', 'm'])
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    for name, points, labels in users:
+        color = next(colors)
+        rows = itertools.izip(*points)
+        x = next(rows)
+        y = next(rows)
+        z = next(rows)
+        ax.scatter(x, y, z, c=color)
+    ax.set_xlabel('1st concept')
+    ax.set_ylabel('2nd concept')
+    ax.set_zlabel('3rd concept')
+    plt.show()
+
+
+def project3d(points, folder):
+    rows = itertools.izip(*points)
+    x = next(rows)
+    y = next(rows)
+    z = next(rows)
+    vmin = min(min(x), min(y), min(z)) - 0.01
+    vmax = max(max(x), max(y), max(z)) + 0.01
+    for plane, pair in enumerate([(y,x), (y,z), (x,z)], start=1):
+        plt.title('Plane %d' %plane)
+        plt.scatter(*pair, s=2)
+        plt.xlim(vmin, vmax)
+        plt.ylim(vmin, vmax)
+        ax = plt.gca()
+        ax.set_aspect(1)
+        if plane == 1:
+            ax.set_ylim(ax.get_ylim()[::-1])
+        elif plane == 3:
+            ax.set_xlim(ax.get_xlim()[::-1])
+        #plt.axis('equal')
+        path = os.path.join(folder, 'plane-%d.png' % plane)
+        plt.savefig(path, format='png')
+        plt.clf()
+
+
+def get_points(dbname, username, start_dim=0, nb_dim=2):
     pts = list()
     labels = dict()
     # Initialize the user / track DB.
@@ -86,17 +143,27 @@ def get_points(dbname, username):
     for track in user.tracks:
         if track.features is not None:
             features = uutils.decode_features(track.features.encode('utf-8'))
-            point = tuple(features[:2])
+            point = tuple(features[start_dim:start_dim+nb_dim])
             pts.append(point)
             labels[point] = u"%s - %s" % (track.artist, track.title)
     return pts, labels
 
 
 def _parse_args():
+    actions = ['2d', '3d', 'monge']
+    global_parser = argparse.ArgumentParser()
+    global_parser.add_argument('action', choices=actions)
     parser = argparse.ArgumentParser()
-    parser.add_argument('user', type=unicode)
     parser.add_argument('--db', default=DEFAULT_DB)
-    return parser.parse_args()
+    args = global_parser.parse_args(args=sys.argv[1:2])
+    if args.action == '2d':
+        parser.add_argument('user', type=unicode)
+    elif args.action == '3d':
+        parser.add_argument('users', nargs='+', type=unicode)
+    elif args.action == 'monge':
+        parser.add_argument('user', type=unicode)
+    parser.parse_args(args=sys.argv[2:], namespace=args)
+    return args
 
 
 if __name__ == '__main__':
