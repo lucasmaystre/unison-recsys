@@ -4,6 +4,7 @@
 import helpers
 import hashlib
 import json
+import libunison.predict as predict
 import pika
 
 from constants import errors
@@ -146,6 +147,9 @@ def dump_library(user, uid):
     for key, entry in current_entries.iteritems():
         if key not in next_entries:
             entry.is_valid = False
+    # Update the user's model.
+    g.store.flush()
+    predict.Model(user).generate(g.store)
     return helpers.success()
 
 
@@ -177,6 +181,9 @@ def update_library(user, uid):
             # Unknown delta type.
             raise helpers.BadRequest(errors.INVALID_DELTA,
                     "not a valid library delta")
+    # Update the user's model.
+    g.store.flush()
+    predict.Model(user).generate(g.store)
     return helpers.success()
 
 

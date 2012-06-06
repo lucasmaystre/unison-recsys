@@ -149,6 +149,8 @@ def b64enc(raw):
 
 
 def b64dec(enc):
+    if isinstance(enc, unicode):
+        enc = enc.encode('utf-8')
     padded = enc + '=' * (4 - len(enc) % 4)
     return base64.urlsafe_b64decode(padded)
 

@@ -1,19 +1,29 @@
 #!/usr/bin/env python
 """Room-related views."""
 
+import datetime
 import helpers
 import libunison.geometry as geometry
+import libunison.predict as predict
 import random
+import time
 
 from constants import errors, events
 from flask import Blueprint, request, g, jsonify
 from libentry_views import set_rating
 from libunison.models import User, Room, Track, LibEntry, RoomEvent
+from operator import itemgetter
 from storm.expr import Desc
 
 
 # Maximal number of rooms returned when listing rooms.
 MAX_ROOMS = 10
+
+# Maximal number of tracks returned when asking for the next tracks.
+MAX_TRACKS = 5
+
+# Interval during which we don't play the same song again.
+ACTIVITY_INTERVAL = 60 * 60 * 5  # In seconds.
 
 room_views = Blueprint('room_views', __name__)
 
@@ -118,28 +128,80 @@ def get_room_info(rid):
     return jsonify(name=room.name, track=track, master=master, users=users)
 
 
+def get_played_filter(room):
+    played = set()
+    threshold = datetime.datetime.fromtimestamp(
+            time.time() - ACTIVITY_INTERVAL)
+    events = g.store.find(RoomEvent, (RoomEvent.room == room)
+        & (RoomEvent.event_type == u'play') & (RoomEvent.created > threshold))
+    for event in events:
+        info = (event.payload.get(artist), event.payload.get(title))
+        played.add(info)
+    def played_filter(entry):
+        info = (entry.track.artist, entry.track.title)
+        return info not in played
+    return played_filter
+
+
 @room_views.route('/<int:rid>', methods=['POST'])
 @helpers.authenticate(with_user=True)
-def get_track(user, rid):
+def get_track(master, rid):
     """Get the next track."""
     room = g.store.get(Room, rid)
     if room is None:
         raise helpers.BadRequest(errors.INVALID_ROOM,
                 "room does not exist")
-    if room.master != user:
+    if room.master != master:
         raise helpers.Unauthorized("you are not the DJ")
-    # TODO Something better than a random song :)
-    entries = list(g.store.find(LibEntry, (LibEntry.user == user)
-            & (LibEntry.is_valid == True) & (LibEntry.is_local == True)))
-    if len(entries) == 0:
+    # Get all the tracks in the master's library that haven't been played.
+    played_filter = get_played_filter(room)
+    remaining = filter(played_filter, g.store.find(LibEntry,
+            (LibEntry.user == master) & (LibEntry.is_valid == True)
+            & (LibEntry.is_local == True)))
+    if len(remaining) == 0:
         raise helpers.NotFound(errors.TRACKS_DEPLETED,
                 'no more tracks to play')
-    entry = random.choice(entries)
-    return jsonify({
-      'artist': entry.track.artist,
-      'title': entry.track.title,
-      'local_id': entry.local_id,
-    })
+    # Partition tracks based on whether we can embed them in the latent space.
+    with_feats = list()
+    points = list()
+    no_feats = list()
+    for entry in remaining:
+        point = predict.get_point(entry.track)
+        if point is not None:
+            with_feats.append(entry)
+            points.append(point)
+        else:
+            no_feats.append(entry)
+    print repr(with_feats)
+    print repr(no_feats)
+    # For the users that can be modelled: predict their ratings.
+    models = filter(lambda model: model.is_nontrivial(),
+            [predict.Model(user) for user in room.users])
+    print repr(models)
+    if models is not None:
+        ratings = [model.score(points) for model in models]
+        print repr(ratings)
+        agg = predict.aggregate(ratings)
+        print repr(agg)
+    else:
+        # Not a single user can be modelled! just order the songs randomly.
+        agg = range(len(with_feats))
+        random.shuffle(agg)
+    # Construct the playlist, decreasing order of scores.
+    playlist = [entry for entry, score in sorted(
+            zip(with_feats, agg), key=itemgetter(1), reverse=True)]
+    # Randomize songs for which we don't have features.
+    random.shuffle(no_feats)
+    playlist.extend(no_feats)
+    # Craft the JSON response.
+    tracks = list()
+    for entry in playlist[:MAX_TRACKS]:
+        tracks.append({
+          'artist': entry.track.artist,
+          'title': entry.track.title,
+          'local_id': entry.local_id,
+        })
+    return jsonify(tracks=tracks)
 
 
 @room_views.route('/<int:rid>/current', methods=['PUT'])
