@@ -8,13 +8,13 @@ from storm.locals import create_database, Store
 
 # Blueprints.
 from user_views import user_views
-from room_views import room_views
+from group_views import group_views
 from libentry_views import libentry_views
 
 
 app = Flask(__name__)
 app.register_blueprint(user_views, url_prefix='/users')
-app.register_blueprint(room_views, url_prefix='/rooms')
+app.register_blueprint(group_views, url_prefix='/groups')
 app.register_blueprint(libentry_views, url_prefix='/libentries')
 
 
@@ -73,7 +73,7 @@ def root(user):
     retriever basic information about the user. Not very RESTful, but pretty
     useful :)
     """
-    return jsonify(uid=user.id, nickname=user.nickname, rid=user.room_id)
+    return jsonify(uid=user.id, nickname=user.nickname, gid=user.group_id)
 
 
 if __name__ == '__main__':

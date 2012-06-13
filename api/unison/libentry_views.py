@@ -9,7 +9,7 @@ import pika
 
 from constants import errors
 from flask import Blueprint, request, g, jsonify
-from libunison.models import User, Room, Track, LibEntry, RoomEvent
+from libunison.models import User, Group, Track, LibEntry, GroupEvent
 
 
 libentry_views = Blueprint('libentry_views', __name__)

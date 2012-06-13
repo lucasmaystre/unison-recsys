@@ -1,23 +1,23 @@
 #!/usr/bin/env python
-"""Room-related views."""
+"""Group-related views."""
 
 import datetime
+import hashlib
 import helpers
 import libunison.geometry as geometry
 import libunison.predict as predict
 import random
-import time
 
 from constants import errors, events
 from flask import Blueprint, request, g, jsonify
 from libentry_views import set_rating
-from libunison.models import User, Room, Track, LibEntry, RoomEvent
+from libunison.models import User, Group, Track, LibEntry, GroupEvent
 from operator import itemgetter
 from storm.expr import Desc
 
 
-# Maximal number of rooms returned when listing rooms.
-MAX_ROOMS = 10
+# Maximal number of groups returned when listing groups.
+MAX_GROUPS = 10
 
 # Maximal number of tracks returned when asking for the next tracks.
 MAX_TRACKS = 5
@@ -25,76 +25,76 @@ MAX_TRACKS = 5
 # Interval during which we don't play the same song again.
 ACTIVITY_INTERVAL = 60 * 60 * 5  # In seconds.
 
-room_views = Blueprint('room_views', __name__)
+group_views = Blueprint('group_views', __name__)
 
 
-@room_views.route('', methods=['GET'])
+@group_views.route('', methods=['GET'])
 @helpers.authenticate()
-def list_rooms():
-    """Get a list of rooms."""
+def list_groups():
+    """Get a list of groups."""
     userloc = None
     try:
         lat = float(request.values['lat'])
         lon = float(request.values['lon'])
     except (KeyError, ValueError):
-        # Sort by descending ID - new rooms come first.
+        # Sort by descending ID - new groups come first.
         key_fct = lambda r: -1 * r.id
     else:
         # Sort the rows according to the distance from the user's location.
         userloc = geometry.Point(lat, lon)
         key_fct = lambda r: geometry.distance(userloc, r.coordinates)
-    rooms = list()
-    rows = sorted(g.store.find(Room, Room.is_active), key=key_fct)
-    for room in rows[:MAX_ROOMS]:
-        rooms.append({
-          'rid': room.id,
-          'name': room.name,
-          'nb_users': room.users.count(),
-          'distance': (geometry.distance(userloc, room.coordinates)
+    groups = list()
+    rows = sorted(g.store.find(Group, Group.is_active), key=key_fct)
+    for group in rows[:MAX_GROUPS]:
+        groups.append({
+          'gid': group.id,
+          'name': group.name,
+          'nb_users': group.users.count(),
+          'distance': (geometry.distance(userloc, group.coordinates)
                   if userloc is not None else None),
         })
-    return jsonify(rooms=rooms)
+    return jsonify(groups=groups)
 
 
-@room_views.route('', methods=['POST'])
+@group_views.route('', methods=['POST'])
 @helpers.authenticate()
-def create_room():
-    """Create a new room."""
+def create_group():
+    """Create a new group."""
     try:
         name = request.form['name']
         lat = float(request.form['lat'])
         lon = float(request.form['lon'])
     except (KeyError, ValueError):
         raise helpers.BadRequest(errors.MISSING_FIELD,
-                "room name, latitude or longitude is missing or invalid")
-    room = Room(name, is_active=True)
-    room.coordinates = geometry.Point(lat, lon)
-    g.store.add(room)
-    return list_rooms()
+                "group name, latitude or longitude is missing or invalid")
+    group = Group(name, is_active=True)
+    group.coordinates = geometry.Point(lat, lon)
+    g.store.add(group)
+    return list_groups()
 
 
-@room_views.route('/<int:rid>', methods=['GET'])
+@group_views.route('/<int:gid>', methods=['GET'])
 @helpers.authenticate()
-def get_room_info(rid):
-    """Get infos about the specified room.
+def get_group_info(gid):
+    """Get infos about the specified group.
 
     Includes:
-    - participants in the room (ID, nickname & stats)
+    - participants in the group (ID, nickname & stats)
     - current DJ (ID & nickname)
     - info about last track
     """
-    room = g.store.get(Room, rid)
-    if room is None:
-        raise helpers.BadRequest(errors.INVALID_ROOM,
-                "room does not exist")
+    group = g.store.get(Group, gid)
+    if group is None:
+        raise helpers.BadRequest(errors.INVALID_GROUP,
+                "group does not exist")
     userdict = dict()
-    for user in room.users:
+    for user in group.users:
         userdict[user.id] = {'nickname': user.nickname}
     # Search for the last track that was played.
-    results = g.store.find(RoomEvent,
-            (RoomEvent.event_type == events.PLAY) & (RoomEvent.room == room))
+    results = g.store.find(GroupEvent, (GroupEvent.event_type == events.PLAY)
+            & (GroupEvent.group == group))
     track = None
-    play_event = results.order_by(Desc(RoomEvent.created)).first()
+    play_event = results.order_by(Desc(GroupEvent.created)).first()
     if play_event is not None:
         artist = play_event.payload.get('artist')
         title = play_event.payload.get('title')
@@ -120,20 +120,20 @@ def get_room_info(rid):
           'predicted': val.get('predicted', True)
         })
     master = None
-    if room.master is not None:
+    if group.master is not None:
         master = {
-          'uid': room.master.id,
-          'nickname': room.master.nickname
+          'uid': group.master.id,
+          'nickname': group.master.nickname
         }
-    return jsonify(name=room.name, track=track, master=master, users=users)
+    return jsonify(name=group.name, track=track, master=master, users=users)
 
 
-def get_played_filter(room):
+def get_played_filter(group):
     played = set()
     threshold = datetime.datetime.fromtimestamp(
             time.time() - ACTIVITY_INTERVAL)
-    events = g.store.find(RoomEvent, (RoomEvent.room == room)
-        & (RoomEvent.event_type == u'play') & (RoomEvent.created > threshold))
+    events = g.store.find(GroupEvent, (GroupEvent.group == group)
+        & (GroupEvent.event_type == u'play') & (GroupEvent.created > threshold))
     for event in events:
         info = (event.payload.get(artist), event.payload.get(title))
         played.add(info)
@@ -143,18 +143,42 @@ def get_played_filter(room):
     return played_filter
 
 
-@room_views.route('/<int:rid>', methods=['POST'])
+def get_playlist_id(group):
+    # Find last event in the group that could have changed the playlist
+    events = g.store.find(GroupEvent, (GroupEvent.group == group)
+            & (GroupEvent.event_type in [u'join', u'leave', u'master']))
+    last = events.order_by(Desc(GroupEvent.created)).first()
+    if last is not None:
+        when = last.created
+    else:
+        when = datetime.utcnow()
+    return unicode(hashlib.sha1(when.strftime('%s')).digest())
+
+
+@group_views.route('/<int:gid>/playlist', methods=['GET'])
 @helpers.authenticate(with_user=True)
-def get_track(master, rid):
-    """Get the next track."""
-    room = g.store.get(Room, rid)
-    if room is None:
-        raise helpers.BadRequest(errors.INVALID_ROOM,
-                "room does not exist")
-    if room.master != master:
+def get_playlist(master, gid):
+    """Get the playlist id."""
+    group = g.store.get(Group, gid)
+    if group is None:
+        raise helpers.BadRequest(errors.INVALID_GROUP,
+                "group does not exist")
+    id = get_playlist_id(group)
+    return jsonify(playlist_id=id)
+
+
+@group_views.route('/<int:gid>/tracks', methods=['GET'])
+@helpers.authenticate(with_user=True)
+def get_tracks(master, gid):
+    """Get the next tracks."""
+    group = g.store.get(Group, gid)
+    if group is None:
+        raise helpers.BadRequest(errors.INVALID_GROUP,
+                "group does not exist")
+    if group.master != master:
         raise helpers.Unauthorized("you are not the DJ")
     # Get all the tracks in the master's library that haven't been played.
-    played_filter = get_played_filter(room)
+    played_filter = get_played_filter(group)
     remaining = filter(played_filter, g.store.find(LibEntry,
             (LibEntry.user == master) & (LibEntry.is_valid == True)
             & (LibEntry.is_local == True)))
@@ -172,11 +196,11 @@ def get_track(master, rid):
             points.append(point)
         else:
             no_feats.append(entry)
-    print repr(with_feats)
+    print repr(with_feats)  # TODO Remove.
     print repr(no_feats)
     # For the users that can be modelled: predict their ratings.
     models = filter(lambda model: model.is_nontrivial(),
-            [predict.Model(user) for user in room.users])
+            [predict.Model(user) for user in group.users])
     print repr(models)
     if models is not None:
         ratings = [model.score(points) for model in models]
@@ -201,18 +225,18 @@ def get_track(master, rid):
           'title': entry.track.title,
           'local_id': entry.local_id,
         })
-    return jsonify(tracks=tracks)
+    return jsonify(playlist_id=get_playlist_id(group), tracks=tracks)
 
 
-@room_views.route('/<int:rid>/current', methods=['PUT'])
+@group_views.route('/<int:gid>/current', methods=['PUT'])
 @helpers.authenticate(with_user=True)
-def play_track(user, rid):
+def play_track(user, gid):
     """Register the track that is currently playing."""
-    room = g.store.get(Room, rid)
-    if room is None:
-        raise helpers.BadRequest(errors.INVALID_ROOM,
-                "room does not exist")
-    if room.master != user:
+    group = g.store.get(Group, gid)
+    if group is None:
+        raise helpers.BadRequest(errors.INVALID_GROUP,
+                "group does not exist")
+    if group.master != user:
         raise helpers.Unauthorized("you are not the master")
     try:
         artist = request.form['artist']
@@ -232,31 +256,31 @@ def play_track(user, rid):
     }
     payload['stats'] = list()
     # TODO Something better than random scores :)
-    for resident in room.users:
+    for resident in group.users:
         payload['stats'].append({
           'uid': resident.id,
           'nickname': resident.nickname,
           'score': int(random.random() * 100),
           'predicted': True if random.random() > 0.2 else False
         })
-    event = RoomEvent(room, user, events.PLAY, payload)
+    event = GroupEvent(group, user, events.PLAY, payload)
     g.store.add(event)
     return helpers.success()
 
 
-@room_views.route('/<int:rid>/current', methods=['DELETE'])
+@group_views.route('/<int:gid>/current', methods=['DELETE'])
 @helpers.authenticate(with_user=True)
-def skip_track(user, rid):
+def skip_track(user, gid):
     """Skip the track that is currently being played."""
-    room = g.store.get(Room, rid)
-    if room is None:
-        raise helpers.BadRequest(errors.INVALID_ROOM,
-                "room does not exist")
-    if room.master != user:
+    group = g.store.get(Group, gid)
+    if group is None:
+        raise helpers.BadRequest(errors.INVALID_GROUP,
+                "group does not exist")
+    if group.master != user:
         raise helpers.Unauthorized("you are not the master")
-    results = g.store.find(RoomEvent,
-            (RoomEvent.event_type == events.PLAY) & (RoomEvent.room == room))
-    play_event = results.order_by(Desc(RoomEvent.created)).first()
+    results = g.store.find(GroupEvent, (GroupEvent.event_type == events.PLAY)
+            & (GroupEvent.group == group))
+    play_event = results.order_by(Desc(GroupEvent.created)).first()
     if play_event is None:
         raise helpers.BadRequest(errors.NO_CURRENT_TRACK,
                 "no track to skip")
@@ -265,19 +289,19 @@ def skip_track(user, rid):
       'title': play_event.payload.get('title'),
       'master': {'uid': user.id, 'nickname': user.nickname},
     }
-    event = RoomEvent(room, user, events.SKIP, payload)
+    event = GroupEvent(group, user, events.SKIP, payload)
     g.store.add(event)
     return helpers.success()
 
 
-@room_views.route('/<int:rid>/ratings', methods=['POST'])
+@group_views.route('/<int:gid>/ratings', methods=['POST'])
 @helpers.authenticate(with_user=True)
-def add_rating(user, rid):
+def add_rating(user, gid):
     """Take the DJ spot (if it is available)."""
-    room = g.store.get(Room, rid)
-    if room is None:
-        raise helpers.BadRequest(errors.INVALID_ROOM,
-                "room does not exist")
+    group = g.store.get(Group, gid)
+    if group is None:
+        raise helpers.BadRequest(errors.INVALID_GROUP,
+                "group does not exist")
     try:
         artist = request.form['artist']
         title = request.form['title']
@@ -288,15 +312,15 @@ def add_rating(user, rid):
     except ValueError:
         raise helpers.BadRequest(errors.INVALID_RATING,
                 "rating is invalid")
-    if user.room != room:
-        raise helpers.Unauthorized("you are not in this room")
+    if user.group != group:
+        raise helpers.Unauthorized("you are not in this group")
     track = g.store.find(Track,
             (Track.artist == artist) & (Track.title == title)).one()
     if track is None:
         raise helpers.BadRequest(errors.INVALID_TRACK,
                 "track not found")
-    # Add a room event.
-    event = RoomEvent(room, user, events.RATING)
+    # Add a group event.
+    event = GroupEvent(group, user, events.RATING)
     event.payload = {
      'artist': track.artist,
      'title': track.title,
@@ -308,36 +332,36 @@ def add_rating(user, rid):
     return helpers.success()
 
 
-@room_views.route('/<int:rid>/master', methods=['PUT'])
+@group_views.route('/<int:gid>/master', methods=['PUT'])
 @helpers.authenticate(with_user=True)
-def set_master(user, rid):
+def set_master(user, gid):
     """Take the DJ spot (if it is available)."""
-    room = g.store.get(Room, rid)
-    if room is None:
-        raise helpers.BadRequest(errors.INVALID_ROOM,
-                "room does not exist")
+    group = g.store.get(Group, gid)
+    if group is None:
+        raise helpers.BadRequest(errors.INVALID_GROUP,
+                "group does not exist")
     try:
         uid = int(request.form['uid'])
     except (KeyError, ValueError):
         raise helpers.BadRequest(errors.MISSING_FIELD,
                 "cannot parse uid")
-    if user.id != uid or user.room != room:
-        raise helpers.Unauthorized("user not self or not in room")
-    if room.master != None and room.master != user:
+    if user.id != uid or user.group != group:
+        raise helpers.Unauthorized("user not self or not in group")
+    if group.master != None and group.master != user:
         raise helpers.Unauthorized("someone else is already here")
-    room.master = user
+    group.master = user
     return helpers.success()
 
 
-@room_views.route('/<int:rid>/master', methods=['DELETE'])
+@group_views.route('/<int:gid>/master', methods=['DELETE'])
 @helpers.authenticate(with_user=True)
-def leave_master(user, rid):
+def leave_master(user, gid):
     """Leave the DJ spot."""
-    room = g.store.get(Room, rid)
-    if room is None:
-        raise helpers.BadRequest(errors.INVALID_ROOM,
-                "room does not exist")
-    if room.master != None and room.master != user:
+    group = g.store.get(Group, gid)
+    if group is None:
+        raise helpers.BadRequest(errors.INVALID_GROUP,
+                "group does not exist")
+    if group.master != None and group.master != user:
         raise helpers.Unauthorized("you are not the master")
-    room.master = None
+    group.master = None
     return helpers.success()

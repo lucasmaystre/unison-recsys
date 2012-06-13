@@ -20,13 +20,13 @@ CREATE TABLE "user" (
   email_valid    boolean NOT NULL DEFAULT FALSE,
   password       text NOT NULL,
   nickname       text,
-  room_id        bigint,
+  group_id       bigint,
   model          text -- Base64 encoded.
 );
-CREATE INDEX user_room_idx ON "user"(room_id);
+CREATE INDEX user_group_idx ON "user"(group_id);
 
 
-CREATE TABLE room (
+CREATE TABLE "group" (
   id             bigserial PRIMARY KEY,
   creation_time  timestamp NOT NULL DEFAULT now(),
   name           text NOT NULL,
@@ -34,8 +34,9 @@ CREATE TABLE room (
   master         bigint REFERENCES "user",
   active         boolean NOT NULL DEFAULT FALSE
 );
--- Add the foreign key constraint on user(room_id).
-ALTER TABLE "user" ADD CONSTRAINT room_fk FOREIGN KEY (room_id) REFERENCES room;
+-- Add the foreign key constraint on user(group_id).
+ALTER TABLE "user" ADD CONSTRAINT group_fk FOREIGN KEY (group_id)
+    REFERENCES "group";
 
 
 CREATE TABLE track (
@@ -75,15 +76,15 @@ CREATE TRIGGER lib_entry_update_time_trigger BEFORE UPDATE
     ON lib_entry FOR EACH ROW EXECUTE PROCEDURE update_time_column();
 
 
-CREATE TYPE room_event_type
+CREATE TYPE group_event_type
     AS ENUM ('play', 'rating', 'join', 'leave', 'skip', 'master');
-CREATE TABLE room_event (
+CREATE TABLE group_event (
   id             bigserial PRIMARY KEY,
   creation_time  timestamp NOT NULL DEFAULT now(),
   user_id        bigint REFERENCES "user",
-  room_id        bigint REFERENCES room,
-  event_type     room_event_type NOT NULL,
+  group_id       bigint REFERENCES "group",
+  event_type     group_event_type NOT NULL,
   payload        text -- JSON encoded.
 );
-CREATE INDEX room_event_room_idx ON room_event(room_id);
-CREATE INDEX room_event_creation_time_idx ON room_event(creation_time);
+CREATE INDEX group_event_group_idx ON group_event(group_id);
+CREATE INDEX group_event_creation_time_idx ON group_event(creation_time);

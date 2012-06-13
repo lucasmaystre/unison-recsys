@@ -8,7 +8,7 @@ import storm.exceptions
 
 from constants import errors
 from flask import Blueprint, request, g, jsonify
-from libunison.models import User, Room, Track, LibEntry, RoomEvent
+from libunison.models import User, Group, Track, LibEntry, GroupEvent
 
 
 user_views = Blueprint('user_views', __name__)
@@ -108,28 +108,28 @@ def update_user_password(user, uid):
     return helpers.success()
 
 
-@user_views.route('/<int:uid>/room', methods=['PUT', 'DELETE'])
+@user_views.route('/<int:uid>/group', methods=['PUT', 'DELETE'])
 @helpers.authenticate(with_user=True)
-def update_user_room(user, uid):
-    """Join or leave a room."""
-    # TODO Create RoomEvent when joining or leaving room.
+def update_user_group(user, uid):
+    """Join or leave a group."""
+    # TODO Create GroupEvent when joining or leaving group.
     helpers.ensure_users_match(user, uid)
     if request.method == 'DELETE':
-        if user.room is not None and user.room.master == user:
-            user.room.master = None
-        user.room = None
+        if user.group is not None and user.group.master == user:
+            user.group.master = None
+        user.group = None
         return helpers.success()
     try:
-        rid = int(request.form['rid'])
+        gid = int(request.form['gid'])
     except:
         raise helpers.BadRequest(errors.MISSING_FIELD,
-                "cannot to parse room ID")
-    room = g.store.get(Room, rid)
-    if room is None:
-        raise helpers.BadRequest(errors.INVALID_ROOM,
-                "room does not exist")
-    if user.room is not None and user.room.master == user:
-        # The user was his old room's master.
-        user.room.master == None
-    user.room = room
+                "cannot to parse group ID")
+    group = g.store.get(Group, gid)
+    if group is None:
+        raise helpers.BadRequest(errors.INVALID_GROUP,
+                "group does not exist")
+    if user.group is not None and user.group.master == user:
+        # The user was his old group's master.
+        user.group.master == None
+    user.group = group
     return helpers.success()

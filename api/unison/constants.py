@@ -14,7 +14,7 @@ errors.EXISTING_USER = 0x02
 errors.INVALID_RATING = 0x03
 errors.INVALID_EMAIL = 0x04
 errors.INVALID_PASSWORD = 0x05
-errors.INVALID_ROOM = 0x06
+errors.INVALID_GROUP = 0x06
 errors.INVALID_TRACK = 0x07
 errors.INVALID_LIBENTRY = 0x08
 errors.INVALID_DELTA = 0x09
@@ -23,7 +23,7 @@ errors.TRACKS_DEPLETED = 0x0b
 errors.MASTER_TAKEN = 0x0c
 errors.NO_CURRENT_TRACK = 0x0d
 
-# Room events.
+# Group events.
 events = Namespace()
 events.RATING = u'rating'
 events.JOIN = u'join'
