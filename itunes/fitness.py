@@ -26,11 +26,10 @@ def process(user):
             tracks.append([5*x for x in features])
     for dim in range(2, 16) + [20, 25, 30, 40]:
         for k in range(1, 21):
-            subset = [x[:dim] for x in tracks]
-            pts = np.array(subset)
-            clf = mixture.GMM(n_components=k, covariance_type='diag')
+            pts = np.array([x[:dim] for x in tracks])
+            clf = mixture.GMM(n_components=k, covariance_type='full')
             clf.fit(pts)
-            print ("dim = %d, k = %d, cov = diag, bic = %f, aic = %f, n = %d"
+            print ("dim = %d, k = %d, cov = full, bic = %f, aic = %f, n = %d"
                     % (dim, k, clf.bic(pts), clf.aic(pts), len(tracks)))
 
 
