@@ -13,7 +13,7 @@ DEFAULT_DB = 'gen/itunes.db'
 CONFIG = uutils.get_config()
 
 
-def get_tracks(path):
+def get_tracks(path, genre=None):
     tracks = list()
     error_count = 0
     doc = etree.parse(open(path))
@@ -24,13 +24,16 @@ def get_tracks(path):
                     "/following-sibling::string[1]")[0]
             title = track.xpath("key[. ='Name']"
                     "/following-sibling::string[1]")[0]
+            genre_ = track.xpath("key[. ='Genre']"
+                    "/following-sibling::string[1]")[0]
         except IndexError:
             error_count += 1
             continue
-        tracks.append({
-          'artist': unicode(artist.text),
-          'title': unicode(title.text),
-        })
+        if genre is None or genre_.text == genre:
+            tracks.append({
+              'artist': unicode(artist.text),
+              'title': unicode(title.text),
+            })
     return tracks, error_count
 
 
@@ -55,13 +58,14 @@ def _parse_args():
     parser.add_argument('user', type=unicode)
     parser.add_argument('file')
     parser.add_argument('--db', default=DEFAULT_DB)
+    parser.add_argument('--genre')
     return parser.parse_args()
 
 
 if __name__ == '__main__':
     args = _parse_args()
     # Parse the tracks from the XML.
-    tracks, error_count = get_tracks(args.file)
+    tracks, error_count = get_tracks(args.file, genre=args.genre)
     print "Nb parsed tracks:  %d" % len(tracks)
     print "Nb parsing errors: %d" % error_count
     # Save tracks into the database.

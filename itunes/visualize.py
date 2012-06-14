@@ -19,7 +19,7 @@ DEFAULT_DB = 'gen/itunes.db'
 
 def main(args):
     if args.action == '2d':
-        pts, labels = get_points(args.db, args.user)
+        pts, labels = get_points(args.db, args.user, start_dim=1)
         plot(pts, labels)
     elif args.action == 'monge':
         pts, _ = get_points(args.db, args.user, start_dim=1, nb_dim=3)
@@ -30,7 +30,7 @@ def main(args):
     elif args.action == '3d':
         users = list()
         for user in args.users:
-            pts, labels = get_points(args.db, user, start_dim=0, nb_dim=3)
+            pts, labels = get_points(args.db, user, start_dim=1, nb_dim=3)
             users.append((user, pts, labels))
         plot3d(users)
     
