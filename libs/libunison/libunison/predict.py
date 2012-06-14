@@ -29,26 +29,27 @@ class Model(object):
     def generate(self, store):
         points = get_points(self._user, store)
         k_max = min(self.K_MAX, len(points) / (2 * DIMENSIONS))
-        if k_max <= 1:
+        if k_max < 1:
             self._user.model = None
             self._gmm = None
             return
         candidates = list()
         for k in range(1, k_max+1):
-            gmm = sklearn.mixture.GMM(n_components=k, covariance_type='diag',
+            gmm = sklearn.mixture.GMM(n_components=k, covariance_type='full',
                     min_covar=self.MIN_COVAR)
             gmm.fit(points)
-            # We compute the Lucas Information Criterion (named after the
-            # infamous computer scientist):
-            # LIC = -2*log_likelihood + k^2 * ln(n) = BIC + k(k-1) * ln(n)
-            penalty = k * (k-1) * math.log(len(points))
-            candidates.append((gmm, gmm.bic(points) + penalty))
-        self._gmm, lic = min(candidates, key=itemgetter(1))
+            candidates.append((gmm, gmm.bic(points)))
+        self._gmm, bic = min(candidates, key=itemgetter(1))
         self._user.model = unicode(pickle.dumps(self._gmm))
         store.flush()
 
     def is_nontrivial(self):
         return self._gmm is not None
+
+    def get_nb_components(self):
+        if not self.is_nontrivial():
+            return 0
+        return self._gmm.n_components
 
     def score(self, points):
         if not self.is_nontrivial():
