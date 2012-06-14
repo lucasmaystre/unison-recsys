@@ -7,6 +7,7 @@ import helpers
 import libunison.geometry as geometry
 import libunison.predict as predict
 import random
+import time
 
 from constants import errors, events
 from flask import Blueprint, request, g, jsonify
@@ -135,7 +136,7 @@ def get_played_filter(group):
     events = g.store.find(GroupEvent, (GroupEvent.group == group)
         & (GroupEvent.event_type == u'play') & (GroupEvent.created > threshold))
     for event in events:
-        info = (event.payload.get(artist), event.payload.get(title))
+        info = (event.payload.get('artist'), event.payload.get('title'))
         played.add(info)
     def played_filter(entry):
         info = (entry.track.artist, entry.track.title)
@@ -151,8 +152,8 @@ def get_playlist_id(group):
     if last is not None:
         when = last.created
     else:
-        when = datetime.utcnow()
-    return unicode(hashlib.sha1(when.strftime('%s')).digest())
+        when = datetime.datetime.utcnow()
+    return unicode(hashlib.sha1(when.strftime('%s')).hexdigest())
 
 
 @group_views.route('/<int:gid>/playlist', methods=['GET'])
