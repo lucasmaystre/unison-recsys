@@ -6,7 +6,7 @@ import libunison.password as password
 import libunison.mail as mail
 import storm.exceptions
 
-from constants import errors
+from constants import errors, events
 from flask import Blueprint, request, g, jsonify
 from libunison.models import User, Group, Track, LibEntry, GroupEvent
 
@@ -112,11 +112,13 @@ def update_user_password(user, uid):
 @helpers.authenticate(with_user=True)
 def update_user_group(user, uid):
     """Join or leave a group."""
-    # TODO Create GroupEvent when joining or leaving group.
     helpers.ensure_users_match(user, uid)
     if request.method == 'DELETE':
-        if user.group is not None and user.group.master == user:
-            user.group.master = None
+        if user.group is not None:
+            if user.group.master == user:
+                user.group.master = None
+            event = GroupEvent(user.group, user, events.LEAVE, None)
+            g.store.add(event)
         user.group = None
         return helpers.success()
     try:
@@ -128,8 +130,14 @@ def update_user_group(user, uid):
     if group is None:
         raise helpers.BadRequest(errors.INVALID_GROUP,
                 "group does not exist")
-    if user.group is not None and user.group.master == user:
-        # The user was his old group's master.
-        user.group.master == None
-    user.group = group
+    if user.group != group:
+        if user.group is not None:
+            if user.group.master == user:
+                # The user was his old group's master.
+                user.group.master == None
+            event = GroupEvent(user.group, user, events.LEAVE, None)
+            g.store.add(event)
+        user.group = group
+        event = GroupEvent(group, user, events.JOIN, None)
+        g.store.add(event)
     return helpers.success()

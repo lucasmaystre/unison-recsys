@@ -14,7 +14,7 @@ from flask import Blueprint, request, g, jsonify
 from libentry_views import set_rating
 from libunison.models import User, Group, Track, LibEntry, GroupEvent
 from operator import itemgetter
-from storm.expr import Desc
+from storm.expr import Desc, In
 
 
 # Maximal number of groups returned when listing groups.
@@ -147,7 +147,7 @@ def get_played_filter(group):
 def get_playlist_id(group):
     # Find last event in the group that could have changed the playlist
     events = g.store.find(GroupEvent, (GroupEvent.group == group)
-            & (GroupEvent.event_type in [u'join', u'leave', u'master']))
+            & In(GroupEvent.event_type, [u'join', u'leave', u'master']))
     last = events.order_by(Desc(GroupEvent.created)).first()
     if last is not None:
         when = last.created
@@ -351,6 +351,8 @@ def set_master(user, gid):
     if group.master != None and group.master != user:
         raise helpers.Unauthorized("someone else is already here")
     group.master = user
+    event = GroupEvent(group, user, events.MASTER, None)
+    g.store.add(event)
     return helpers.success()
 
 
