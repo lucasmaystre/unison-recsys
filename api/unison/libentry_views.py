@@ -202,7 +202,7 @@ def get_ratings(user, uid):
             'local_id': entry.local_id,
             'rating': entry.rating,
         })
-    return jsonify(ratings=ratings)
+    return jsonify(tracks=ratings)
 
 
 @libentry_views.route('/<int:uid>/ratings', methods=['POST'])
