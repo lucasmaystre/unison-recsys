@@ -3,7 +3,7 @@ import libunison.mail as mail
 import urllib
 import yaml
 
-from flask import Flask, render_template, request, g
+from flask import Flask, render_template, request, g, redirect
 from libunison.models import User
 from storm.locals import create_database, Store
 
@@ -30,8 +30,19 @@ def teardown_request(response):
 
 
 @app.route('/')
-def hello_world():
+def homepage():
     return render_template('index.html')
+
+
+@app.route('/tagview')
+def tagview():
+    return render_template('tagview.html')
+
+
+@app.route('/qrcode')
+def qrcode():
+    return redirect('https://play.google.com/store'
+            + '/search?q=pname:ch.epfl.unison')
 
 
 @app.route('/m/signup', methods=['GET', 'POST'])

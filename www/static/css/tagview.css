@@ -1,0 +1,30 @@
+div#container {
+  max-width: 900px;
+  margin: 0 auto;
+  font-family: Helvetica, arial, sans-serif;
+}
+
+img#loader, div#box-tpl {
+  display: none;
+}
+
+div.box {
+  line-height: 1.5;
+  border-bottom: 2px solid #EFEFEF;
+  padding-bottom: 10px;
+}
+
+div#header {
+  padding: 0 0 10px 0;
+  border-bottom: 5px solid #EFEFEF;
+}
+
+span.tag {
+  float: left;
+  display: block;
+  margin: 0 7px 7px 0;
+  background: #FFFFCC;
+  border: 1px solid #EFEFEF;
+  padding:0 3px;
+  white-space: nowrap;
+}

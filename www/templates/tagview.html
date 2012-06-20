@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Tags Viewer</title>
+
+  <link rel="stylesheet" href="/static/css/tagview.css"/>
+  <script type="text/javascript" src="/static/js/jquery-1.7.2.min.js"></script>
+  <script type="text/javascript" src="/static/js/tagview.js"></script>
+</head>
+<body>
+
+  <div id="container">
+    <div id="header">
+      <h1>Tags Viewer</h1>
+      <div id="input">
+        <form id="userinput">
+          <input type="text" id="input-artist" placeholder="Artist" />
+          <input type="text" id="input-title" placeholder="Title" />
+          <button type="submit">Fetch tags</button>
+          <img id="loader" src="/static/img/loader.gif" />
+        </form>
+      </div>
+    </div>
+
+    <div id="boxes"></div>
+  </div>
+
+
+  <!-- Template for the boxes. -->
+  <div id="box-tpl">
+    <div class="box">
+      <p>
+        Artist: <strong class="artist"></strong><br />
+        Title: <strong class="title"></strong>
+      </p>
+      <p class="tags"></p>
+      <div style="clear: left"></div>
+    </div>
+  </div>
+
+</body>
+</html>
