@@ -12,6 +12,7 @@ import liblfm
 import libunison.utils as uutils
 import logging
 import time
+import threading
 
 from libunison.models import Track
 
@@ -20,7 +21,7 @@ DEFAULT_RATE = 1.0  # Maximal number of items processed every second.
 CONFIG = uutils.get_config()
 
 
-class Fetcher(object):
+class Fetcher(threading.Thread):
     """Last.fm track tags fetcher.
 
     Listens for jobs on the message queue, and processes them sequentially at a
@@ -33,6 +34,7 @@ class Fetcher(object):
         self._store = store
         self._logger = logger
         self._conn = None
+        threading.Thread.__init__(self)
 
     def run(self):
         """Start listening to messages from the queue."""
@@ -116,7 +118,6 @@ class Fetcher(object):
 def _parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--rate', type=float, default=DEFAULT_RATE)
-    parser.add_argument('--key', default=CONFIG['lastfm']['key'])
     return parser.parse_args()
 
 
@@ -133,11 +134,9 @@ def _get_logger():
 if __name__ == '__main__':
     args = _parse_args()
     logger = _get_logger()
-    lfm = liblfm.LastFM(args.key)
-    store = uutils.get_store(CONFIG['database']['string'])
-    fetcher = Fetcher(args.rate, lfm, store, logger)
-    # Launch the fetcher !
-    try:
-        fetcher.run()
-    except KeyboardInterrupt:
-        fetcher.close()
+    for key in [CONFIG['lastfm']['key']] + CONFIG['lastfm']['addkeys']:
+        lfm = liblfm.LastFM(key)
+        store = uutils.get_store(CONFIG['database']['string'])
+        fetcher = Fetcher(args.rate, lfm, store, logger)
+        # Launch the fetcher !
+        fetcher.start()
