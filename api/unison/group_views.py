@@ -197,17 +197,12 @@ def get_tracks(master, gid):
             points.append(point)
         else:
             no_feats.append(entry)
-    print repr(with_feats)  # TODO Remove.
-    print repr(no_feats)
     # For the users that can be modelled: predict their ratings.
     models = filter(lambda model: model.is_nontrivial(),
             [predict.Model(user) for user in group.users])
-    print repr(models)
     if models is not None:
         ratings = [model.score(points) for model in models]
-        print repr(ratings)
         agg = predict.aggregate(ratings)
-        print repr(agg)
     else:
         # Not a single user can be modelled! just order the songs randomly.
         agg = range(len(with_feats))
@@ -262,7 +257,7 @@ def play_track(user, gid):
           'uid': resident.id,
           'nickname': resident.nickname,
           'score': int(random.random() * 100),
-          'predicted': True if random.random() > 0.2 else False
+          'predicted': True #if random.random() > 0.2 else False
         })
     event = GroupEvent(group, user, events.PLAY, payload)
     g.store.add(event)

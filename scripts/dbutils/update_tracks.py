@@ -58,6 +58,6 @@ if __name__ == '__main__':
             time.time() - args.interval * 60 * 60)
     store = uutils.get_store()
     for track in store.find(Track,
-            (Track.tags == None) & (Track.updated < threshold)):
+            (Track.tags == None) & (Track.updated > threshold)):
         init_track(track)
         print "%s - %s" % (track.artist, track.title)

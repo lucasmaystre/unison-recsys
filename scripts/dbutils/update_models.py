@@ -33,3 +33,4 @@ if __name__ == '__main__':
         model = predict.Model(user)
         model.generate(store)
         print "    ... %d components" % model.get_nb_components()
+    store.commit()
