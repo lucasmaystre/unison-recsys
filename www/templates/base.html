@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/css/bootstrap.min.css"/>
+  <link rel="stylesheet" href="/static/css/default.css"/>
+  <link rel="stylesheet" href="/static/css/bootstrap-responsive.min.css"/>
+  <title>{% block title %}{% endblock %} - GroupStreamer.com</title>
+
+  <!-- Google Analytics -->
+  <script type="text/javascript">
+
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-473720-8']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+
+  </script>
+</head>
+<body>
+
+{% macro gen_nav(active) %}
+  <ul class="nav">
+  {% for name, link in [('Home', '/'), ('About', '/about'),
+      ('Technology', '/technology'), ('News', '/news')] %}
+    {% if active == name %}
+    <li class="active">
+      <a href="{{ link }}">{{ name }}</a>
+    </li>
+    {% else %}
+    <li><a href="{{ link }}">{{ name }}</a></li>
+    {% endif %}
+  {% endfor %}
+  </ul>      
+{% endmacro %}
+
+  <!-- Navigation bar. -->
+  <div class="navbar navbar-fixed-top">
+    <div class="navbar-inner">
+      <div class="container">
+        <a class="brand" href="/">
+          GroupStreamer
+        </a>
+        {% block nav %}{% endblock %}
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+  
+    {% block content %}{% endblock %}
+
+    <footer>
+      <a class="footer-elem" href="http://ic.epfl.ch/">
+        <img src="/static/img/epfl.png" />
+      </a>
+      <a class="footer-elem" href="http://lca.epfl.ch/">
+        <img src="/static/img/lca4.png" />
+      </a>
+      <span class="footer-elem" id="footer-info">
+        GroupStreamer was developed at <a href="http://ic.epfl.ch/">EPFL</a>'s
+        <a href="http://lca.epfl.ch/">LCA 4</a><br />
+        Copyright &copy; 2012 <a href="http://lucas.maystre.ch">Lucas
+        Maystre</a> - <a href="mailto:lucas@maystre.ch">contact</a>
+      </span>
+    </footer>
+  </div>
+
+</body>
+</html>

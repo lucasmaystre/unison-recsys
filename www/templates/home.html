@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Music Recommendation for Groups{% endblock %}
+{% block nav %}{{ gen_nav("Home") }}{% endblock %}
+{% block content %}
+  <header class="hero-unit">
+    <div class="row-fluid">
+      <div class="span4">
+        <img src="/static/img/logo_big.png" />
+      </div>
+      <div class="span8">
+        <h1>All music is beautiful.</h1>
+        <p><strong>But don't we all have our preferences ?</strong></p>
+        <p>
+          Introducing GroupStreamer, the music recommender system for groups.
+          Now available in public beta for most Android devices.
+        </p>
+        <p>
+          <a class="btn btn-primary btn-large"
+              href="https://play.google.com/store/search?q=pname:ch.epfl.unison">
+            Download for Android <sup class="beta">BETA</sup>
+          </a>
+        </p>
+      </div>
+    </div>
+  </header>
+
+
+  <div class="row">
+    <div class="span4">
+      <h2 class="homebox page-header">About</h2>
+      <p>
+        <strong>GroupStreamer</strong> is a music recommender system for
+        parties and gatherings: it picks out the best music on your Android
+        device given the people around you.
+      </p>
+      <p>
+        It's a new project from EPFL's <a
+        href="http://lca.epfl.ch/">Laboratory for Communications and
+        Applications 4</a> whose purpose is to investigate recommender systems
+        in mobile settings.
+      </p>
+      <p><a class="btn" href="/about">View details &raquo;</a></p>
+    </div>
+
+    <div class="span4">
+      <h2 class="homebox page-header">Technology</h2>
+      <img src="/static/img/jazzrock3d.png" style="float: left"/>
+      <p>
+        GroupStreamer analyzes each user's music library to
+        <strong>automatically determine</strong> musical
+        tastes.
+      </p>
+      <p>Individual preferences are then <strong>combined</strong> in
+        such a way that everyone in the group is as satisfied as possible.
+      </p>
+      <p><a class="btn" href="/technology">Learn more &raquo;</a></p>
+    </div>
+
+    <div class="span4">
+      <h2 class="homebox page-header">News</h2>
+      <p>Here are the <strong>latest news</strong> about GroupStreamer:</p>
+      <ul>
+        <li>Version 1.1 released on <a
+        href="https://play.google.com/store/apps/details?id=ch.epfl.unison">
+        Google Play</a>.</li>
+        <li><a href="http://romandroid.ch/applications/groupstreamer-choisir-la-meilleure-musique-pour-un-groupe-de-personnes">
+        Romandroid.ch</a> reviews our app.</li>
+        <li><a href="http://www.24heures.ch/high-tech/hard-software/playliste-met-monde-accord/story/20997584">
+        24 heures</a> talks about us.</li>
+        <li><a href="http://www.20min.ch/ro/multimedia/stories/story/L-app-qui-ne-ruine-pas-l-ambiance-des-soirees-12909085">
+        20 minutes</a> talks about us.</li>
+        <li>We made a <a href="/static/bin/poster.pdf">poster</a> presenting
+        GroupStreamer.</li>
+      </ul>
+      <p><a class="btn" href="/news">Earlier news &raquo;</a></p>
+    </div>
+  </div>
+{% endblock %}

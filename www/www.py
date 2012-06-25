@@ -31,7 +31,22 @@ def teardown_request(response):
 
 @app.route('/')
 def homepage():
-    return render_template('index.html')
+    return render_template('home.html')
+
+
+@app.route('/technology')
+def technology():
+    return render_template('technology.html')
+
+
+@app.route('/about')
+def about():
+    return render_template('about.html')
+
+
+@app.route('/news')
+def news():
+    return render_template('news.html')
 
 
 @app.route('/tagview')

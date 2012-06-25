@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}News{% endblock %}
+{% block nav %}{{ gen_nav("News") }}{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <h1>News <small>what's happening</small></h1>
+  </div>
+
+  <div class="row">
+    <div class="span12">
+    <p>
+      <strong>Sunday, June 24<sup>th</sup></strong><br />
+      <a href="http://romandroid.ch/applications/groupstreamer-choisir-la-meilleure-musique-pour-un-groupe-de-personnes">
+      Romandroid.ch</a> wrote a review about GroupStreamer.<br />
+      GroupStreamer v1.1 fixes a few bugs and is available on Google Play.
+    </p>
+    <p>
+      <strong>Friday, June 22<sup>nd</sup></strong><br />
+      <a
+      href="http://www.24heures.ch/high-tech/hard-software/playliste-met-monde-accord/story/20997584">
+      24 heures</a> and <a
+      href="http://www.20min.ch/ro/multimedia/stories/story/L-app-qui-ne-ruine-pas-l-ambiance-des-soirees-12909085">
+      20 minutes</a> wrote an article about GroupStreamer.
+    </p>
+    <p>
+      <strong>Thursday, June 21<sup>st</sup></strong><br />
+      We made a poster presenting the technology behind GroupStreamer. <a
+      href="/static/bin/poster.pdf">Check it out</a>!
+    </p>
+    <p>
+      <strong>Wednesday, June 20<sup>th</sup></strong><br />
+      GroupStreamer v1.0, the first public release, is available on <a
+      href="https://play.google.com/store/apps/details?id=ch.epfl.unison">Google
+      Play</a>.
+    </p>
+    </div>
+  </div>
+{% endblock %}

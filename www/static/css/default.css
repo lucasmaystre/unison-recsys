@@ -12,6 +12,38 @@
   margin-top: 1em;
 }
 
-.hero-unit h1 {
-  margin-top: 0.5em;
+body {
+  padding-top: 60px;
+}
+
+.hero-unit {
+  padding: 40px;
+}
+
+.beta {
+  font-variant:small-caps;
+}
+
+footer {
+  border-top: 1px solid #EEEEEE;
+  margin-top: 20px;
+}
+
+span#footer-info {
+  /*background: #EEEEEE;*/
+  border-left: 1px solid #EEEEEE;
+  padding: 10px 15px;
+  color: #888;
+  /*float:right; */
+}
+
+.footer-elem {
+  display: block;
+  float: left;
+  margin: 20px 20px 20px 0;
+}
+
+.homebox {
+  margin-top: 0;
+  padding-bottom: 10px;
 }
