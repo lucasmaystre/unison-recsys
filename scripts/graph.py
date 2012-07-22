@@ -12,21 +12,27 @@ def plot(data, name, save):
     labels = list()
     means = list()
     std = list()
-    for label, values in data.iteritems():
-        labels.append(label)
+    i = 1
+    for label, values in sorted(data.iteritems(),
+            key=lambda x: x[1][0], reverse=True):
+        labels.append('user %d' % i)
+        i += 1
         means.append(100*values[0])
         std.append(100*values[1])
 
     ind = np.arange(len(labels))  # the x locations for the groups
     width = 0.6  # the width of the bars: can also be len(x) sequence
 
-    p1 = plt.bar(ind, means, width, color='r', yerr=std)
-    plt.ylabel('Score')
-    plt.title('User %s' % name)
+    p1 = plt.bar(ind, means, width, color='0.7', yerr=std)
+    plt.ylabel('Average Performance')
+    plt.title('Classifier Performance')
     plt.xticks(ind+width/2., labels)
     plt.yticks(np.arange(0,101,10))
-    plt.legend( (p1[0],), ('Classifier performance',) )
+    plt.legend( (p1[0],), ('RBF Kernel SVM',) )
     plt.axhline(y=50)  # Horizontal line indicating random choice.
+
+    #ax = plt.gca()
+    #ax.set_aspect(0.05)
 
     if save is None:
         plt.show()

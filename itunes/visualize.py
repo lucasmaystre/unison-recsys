@@ -36,7 +36,7 @@ def main(args):
     
 
 def make_ellipses(gmm, ax, nb):
-    colors = ['r', 'g', 'b', 'c', 'm', 'y', 'k']
+    colors = ['r', 'y', 'b', 'c', 'm', 'g', 'k']
     for n, color in enumerate(colors[:nb]):
         v, w = np.linalg.eigh(gmm._get_covars()[n][:2, :2])
         u = w[0] / np.linalg.norm(w[0])
@@ -60,10 +60,10 @@ def plot(points, labels):
     clf = mixture.GMM(n_components=3, covariance_type='diag')
     clf.fit(points)
 
-    make_ellipses(clf, ax, 3)
+    #make_ellipses(clf, ax, 3)
 
-    xx = np.linspace(-1.0, 1.0)
-    yy = np.linspace(-1.0, 1.0)
+    xx = np.linspace(-0.4, 0.4)
+    yy = np.linspace(-0.4, 0.4)
     X, Y = np.meshgrid(xx, yy)
     XX = np.c_[X.ravel(), Y.ravel()]
     Z = np.log(-clf.eval(XX)[0])
@@ -72,8 +72,8 @@ def plot(points, labels):
     CS = ax.contour(X, Y, Z)
     CB = plt.colorbar(CS, shrink=0.8, extend='both')
 
-    #plt.xlabel('Dimension 1')
-    #plt.ylabel('Dimension 2')
+    plt.xlabel('Dimension 1')
+    plt.ylabel('Dimension 2')
     sc = ax.scatter(x, y, 2, picker=True)
     plt.title('2-dimensional embedding')
     tbox = fig.text(0.15, 0.12, 'click on a point', va='bottom', ha='left', axes=ax,
@@ -88,6 +88,9 @@ def plot(points, labels):
         print "--- points at this position:"
         print "\n".join(tracks)
     fig.canvas.mpl_connect('pick_event', onpick)
+    plt.xlim(-0.35, 0.25)
+    plt.ylim(-0.4, 0.4)
+    #plt.savefig('scatter.png', format='png', dpi=300)
     plt.show()
 
 
@@ -105,6 +108,7 @@ def plot3d(users):
     ax.set_xlabel('1st concept')
     ax.set_ylabel('2nd concept')
     ax.set_zlabel('3rd concept')
+    #plt.savefig('3d.png', format='png', dpi=300)
     plt.show()
 
 

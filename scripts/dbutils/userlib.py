@@ -123,6 +123,8 @@ def compare(uids, store, start_dim=0):
     ax.set_xlabel('1st concept')
     ax.set_ylabel('2nd concept')
     ax.set_zlabel('3rd concept')
+    #ax.view_init(30, 30)
+    #plt.savefig('libs.png', format='png', dpi=300)
     plt.show()
 
 
