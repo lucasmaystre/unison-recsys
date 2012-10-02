@@ -38,6 +38,9 @@ Fortran compiler.
     pip install scipy
     pip install matplotlib
 
+    # You might also have to install scikit-learn to be able to run everything.
+    pip install scikit-learn
+
 Unison uses many other tools and software. Hopefully most of it is documented in
 the relevant places (checkout the README files in the various subfolders).
 
