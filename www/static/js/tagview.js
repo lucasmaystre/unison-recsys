@@ -1,4 +1,4 @@
-var API_KEY = "b25b959554ed76058ac220b7b2e0a026"
+var API_KEY = "5027d5a2a57c7f32de928d2b0eada017"
 var API_ROOT = "http://ws.audioscrobbler.com/2.0/?"
 
 var onSubmit = function(event) {
